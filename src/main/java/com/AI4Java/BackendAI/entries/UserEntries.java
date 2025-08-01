@@ -1,0 +1,92 @@
+package com.AI4Java.BackendAI.entries;
+
+
+import jakarta.validation.constraints.Email;
+import org.bson.types.ObjectId;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.DBRef;
+import org.springframework.data.mongodb.core.mapping.Document;
+
+import java.util.ArrayList;
+import java.util.List;
+
+@Document(collection = "userEntries")
+public class UserEntries {
+
+    @Id
+    private ObjectId userId;
+
+    @Indexed(unique = true)
+    private String userName;
+
+    private String password;
+
+    private String gmail;
+
+    @DBRef
+    private List<SessionEntries> sessionEntries = new ArrayList<>();
+
+    private List<String> roles;
+
+
+    public UserEntries() {
+    }
+
+    public UserEntries(ObjectId userId, String userName, String password, String gmail, List<SessionEntries> sessionEntries, List<String> roles) {
+        this.userId = userId;
+        this.userName = userName;
+        this.password = password;
+        this.gmail = gmail;
+        this.sessionEntries=sessionEntries;
+        this.roles=roles;
+    }
+
+    public ObjectId getUserId() {
+        return userId;
+    }
+
+    public void setUserId(ObjectId userId) {
+        this.userId = userId;
+    }
+
+    public String getUserName() {
+        return userName;
+    }
+
+    public void setUserName(String userName) {
+        this.userName = userName;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    public String getGmail() {
+        return gmail;
+    }
+
+    public void setGmail(String gmail) {
+        this.gmail = gmail;
+    }
+
+    public List<SessionEntries> getSessionEntries() {
+        return sessionEntries;
+    }
+
+    public void setSessionEntries(List<SessionEntries> sessionEntries) {
+        this.sessionEntries = sessionEntries;
+    }
+
+    public List<String> getRoles() {
+        return roles;
+    }
+
+    public void setRoles(List<String> roles) {
+        this.roles = roles;
+    }
+}
