@@ -1,4 +1,4 @@
-package com.AI4Java.BackendAI;
+package com.AI4Java.BackendAI.BasicTests;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

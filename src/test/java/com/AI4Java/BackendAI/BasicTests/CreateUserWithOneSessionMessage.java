@@ -1,4 +1,4 @@
-package com.AI4Java.BackendAI;
+package com.AI4Java.BackendAI.BasicTests;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -48,7 +48,7 @@ public class CreateUserWithOneSessionMessage {
 
     void createSession(String token) throws Exception {
         // 3. Create a new chat session
-        String sessionCreateDto = "{\"nameSession\":\"New Session\", \"model\":\"google/gemma-3-1b\"}";
+        String sessionCreateDto = "{\"nameSession\":\"New Session\", \"model\":\"google/gemma-3-4b\"}";
         MvcResult sessionResult = mockMvc.perform(post("/api/v1/sessions/create")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -64,7 +64,7 @@ public class CreateUserWithOneSessionMessage {
     }
 
     void sendMessage(String token, String sessionId) throws Exception {
-        String chatRequest = "{\"prompt\":\"Hello, Mitsubishi!!\"}";
+        String chatRequest = "{\"prompt\":\"Hello, Mitsubishi!!, What tools can you use?\"}";
         mockMvc.perform(post("/api/v1/chat/" + sessionId)
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -72,7 +72,7 @@ public class CreateUserWithOneSessionMessage {
                 .andExpect(status().isOk())
                 .andReturn();
 
-        Thread.sleep(10000); //For to save the sendMessage
+        Thread.sleep(25000); //For to save the sendMessage
 
     }
 

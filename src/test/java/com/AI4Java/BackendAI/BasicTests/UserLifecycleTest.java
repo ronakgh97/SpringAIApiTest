@@ -1,10 +1,9 @@
-package com.AI4Java.BackendAI;
+package com.AI4Java.BackendAI.BasicTests;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Profile;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import com.AI4Java.BackendAI.repository.SessionRepo;
@@ -58,7 +57,7 @@ public class UserLifecycleTest {
         String token = objectMapper.readTree(loginResponse).get("data").get("token").asText();
 
         // 3. Create a new chat session
-        String sessionCreateDto = "{\"nameSession\":\"Test Session\", \"model\":\"google/gemma-3-1b\"}";
+        String sessionCreateDto = "{\"nameSession\":\"Test Session\", \"model\":\"google/gemma-3-4b\"}";
         MvcResult sessionResult = mockMvc.perform(post("/api/v1/sessions/create")
                 .header("Authorization", "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON)

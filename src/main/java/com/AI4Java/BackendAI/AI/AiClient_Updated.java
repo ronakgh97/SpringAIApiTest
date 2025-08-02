@@ -1,5 +1,6 @@
 package com.AI4Java.BackendAI.AI;
 
+import com.AI4Java.BackendAI.AI.tools.BasicTools;
 import com.AI4Java.BackendAI.entries.SessionEntries;
 import com.AI4Java.BackendAI.services.SessionServices;
 import org.bson.types.ObjectId;
@@ -104,6 +105,7 @@ public class AiClient_Updated {
                 .prompt()
                 .system(systemText)
                 .user(userPrompt)
+                .tools(new BasicTools())
                 .stream()
                 .chatResponse()
                 .doOnError(e -> log.error("Error during AI response streaming for session {}", convId, e))
