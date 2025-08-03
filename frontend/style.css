@@ -1,0 +1,254 @@
+/* Reset and Base Styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Define CSS Variables for Consistency */
+:root {
+  --primary-color: #C0C0C0;
+  --text-light: #E0E0E0; /* Improved contrast */
+  --bg-gradient: linear-gradient(135deg, #000000 0%, #1a1a1a 50%, #2a2a2a 100%);
+  --glass-bg: rgba(255, 255, 255, 0.05); /* More modern glass effect */
+  --glass-blur: blur(30px);
+  --border-radius: 16px; /* Consistent rounding */
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 32px;
+  --font-stack: 'Inter', system-ui, -apple-system, sans-serif; /* Modern sans-serif */
+  --transition: all 0.3s ease-in-out;
+}
+
+body {
+  font-family: var(--font-stack);
+  background: var(--bg-gradient);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-md);
+  line-height: 1.5; /* Better readability */
+}
+
+/* Wrapper */
+.wrapper {
+  width: 100%;
+  max-width: 400px;
+  margin: auto; /* Explicit centering */
+}
+
+/* Login Box */
+.login_box {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-lg) var(--spacing-md) var(--spacing-md);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  animation: fadeInUp 0.8s ease-out;
+}
+
+/* Login Header */
+.login-header {
+  text-align: center;
+  margin-bottom: var(--spacing-lg);
+}
+
+.login-header span {
+  font-size: clamp(28px, 4vw, 32px); /* Responsive scaling */
+  font-weight: 600;
+  color: #ffffff;
+  letter-spacing: -0.5px;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+}
+
+/* Input Box Container */
+.input_box {
+  position: relative;
+  margin-bottom: var(--spacing-md);
+}
+
+/* Input Field */
+.input-field {
+  width: 100%;
+  height: clamp(50px, 8vh, 55px); /* Responsive height */
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-md) 45px var(--spacing-md) var(--spacing-md);
+  font-size: clamp(14px, 4vw, 16px);
+  color: #ffffff;
+  outline: none;
+  transition: var(--transition);
+  z-index: 2;
+  position: relative;
+}
+
+.input-field:focus {
+  border-color: rgba(255, 255, 255, 0.6);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.input-field::placeholder {
+  color: rgba(255, 255, 255, 0.5); /* Subtle placeholders for guidance */
+  opacity: 1;
+}
+
+/* Enhanced Focus for Accessibility */
+.input-field:focus {
+  outline: 2px solid var(--primary-color); /* Visible focus state */
+}
+
+/* Validation States */
+.input-field.invalid {
+  border-color: #FF6B6B; /* Error state */
+  box-shadow: 0 0 0 2px rgba(255, 107, 107, 0.2);
+}
+
+/* Label */
+.label {
+  position: absolute;
+  top: 50%;
+  left: var(--spacing-md);
+  transform: translateY(-50%);
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.7);
+  pointer-events: none;
+  transition: var(--transition);
+  z-index: 1;
+}
+
+/* Floating Label Effect */
+.input-field:focus + .label,
+.input-field:not(:placeholder-shown) + .label {
+  top: -8px;
+  left: 12px;
+  font-size: 12px;
+  color: var(--text-light); /* Better contrast */
+  background: var(--bg-gradient);
+  padding: 0 var(--spacing-sm);
+  border-radius: 4px;
+}
+
+/* Icon */
+.icon {
+  position: absolute;
+  top: 50%;
+  right: var(--spacing-md);
+  transform: translateY(-50%);
+  font-size: 20px;
+  color: rgba(255, 255, 255, 0.5);
+  transition: var(--transition);
+  z-index: 3;
+  pointer-events: none;
+}
+
+.input-field:focus ~ .icon {
+  color: var(--primary-color);
+}
+
+/* Submit Button */
+.submit {
+  width: 100%;
+  height: clamp(50px, 8vh, 55px);
+  background: #A8A8A8; /* Toned-down single color */
+  border: none;
+  border-radius: var(--border-radius);
+  font-size: clamp(14px, 4vw, 16px);
+  font-weight: 600;
+  color: #000000;
+  cursor: pointer;
+  transition: var(--transition);
+  box-shadow: 0 4px 15px rgba(255, 255, 255, 0.3);
+}
+
+.submit:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(255, 255, 255, 0.4);
+  background: #B8B8B8; /* Subtle hover change */
+}
+
+/* Loading State (Add via JS if needed) */
+.submit.loading {
+  opacity: 0.7;
+  cursor: not-allowed;
+  /* Add spinner animation here if desired */
+}
+
+/* Status Button */
+.status {
+  width: 100%;
+  height: clamp(50px, 8vh, 55px);
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: var(--border-radius);
+  font-size: clamp(14px, 4vw, 16px);
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.status:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.5);
+  color: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(255, 255, 255, 0.2);
+}
+
+/* Register Link */
+.register {
+  text-align: center;
+  margin: var(--spacing-md) 0;
+}
+
+.register span {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.register a {
+  color: var(--primary-color);
+  text-decoration: none;
+  font-weight: 600;
+  transition: var(--transition);
+}
+
+.register a:hover {
+  color: #D3D3D3;
+  text-decoration: underline;
+}
+
+/* Responsive Design (Mobile-First) */
+@media (max-width: 480px) {
+  .wrapper {
+    max-width: 100%;
+    margin: 0 var(--spacing-sm);
+  }
+
+  .login_box {
+    padding: var(--spacing-md) var(--spacing-sm);
+  }
+}
+
+@media (min-width: 481px) and (max-width: 768px) {
+  /* Tablet adjustments */
+  .wrapper {
+    max-width: 600px;
+  }
+}
+
+/* Animation for Page Load */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
