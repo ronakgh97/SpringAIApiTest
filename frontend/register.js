@@ -1,165 +1,103 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // Get form elements
+    // Get references to the HTML elements we need to interact with.
     const registerForm = document.getElementById('registerForm');
     const nameInput = document.getElementById('name');
     const emailInput = document.getElementById('email');
     const passwordInput = document.getElementById('password');
     const registerButton = registerForm.querySelector('.submit');
     const registerMessage = document.getElementById('registerMessage');
-    
-    // Base API URL - adjust this to match your Spring Boot server
-    const API_BASE_URL = 'http://localhost:8080/api/v1/users';
-    
-    // Add event listener for registration form submission
+
+    // Add an event listener to the registration form to handle submission.
     registerForm.addEventListener('submit', function(e) {
+        // Prevent the default form submission, which would reload the page.
         e.preventDefault();
+        // Call the function to handle the registration process.
         handleRegistration();
     });
-    
-    // Handle registration functionality
+
+    // This function handles the user registration process.
     async function handleRegistration() {
-        // Get input values
+        // Get the trimmed values from the input fields.
         const name = nameInput.value.trim();
         const email = emailInput.value.trim();
         const password = passwordInput.value.trim();
-        
-        // Validate inputs
+
+        // Validate that all fields are filled out.
         if (!name || !email || !password) {
-            showMessage('Please fill in all fields', 'error');
+            showMessage(registerMessage, 'Please fill in all fields', 'error');
             return;
         }
-        
-        // Basic email validation
+
+        // Validate the email format.
         if (!isValidEmail(email)) {
-            showMessage('Please enter a valid email address', 'error');
+            showMessage(registerMessage, 'Please enter a valid email address', 'error');
             return;
         }
-        
-        // Password length validation (matching backend requirements)
+
+        // Validate the password length.
         if (password.length < 6) {
-            showMessage('Password must be at least 6 characters long', 'error');
+            showMessage(registerMessage, 'Password must be at least 6 characters long', 'error');
             return;
         }
-        
-        // Username length validation (matching backend requirements)
+
+        // Validate the username length.
         if (name.length < 3) {
-            showMessage('Username must be at least 3 characters long', 'error');
+            showMessage(registerMessage, 'Username must be at least 3 characters long', 'error');
             return;
         }
-        
-        // Show loading state
+
+        // Put the register button in a loading state.
         setButtonLoading(registerButton, true);
-        showMessage('Registering...', 'info');
-        
+        // Show an informational message to the user.
+        showMessage(registerMessage, 'Registering...', 'info');
+
         try {
-            // Prepare registration data
+            // Create the data object to send to the server.
             const registrationData = {
                 userName: name,
                 gmail: email,
                 password: password
             };
-            
-            // Make API call to register endpoint
-            const response = await fetch(`${API_BASE_URL}/register`, {
+
+            // Send a POST request to the register endpoint with the user's details.
+            const response = await fetch(API_CONFIG.BASE_URL + API_CONFIG.endpoints.REGISTER, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(registrationData)
             });
-            
-            // Parse response
-            const result = await response.json();
-            
-            if (response.ok && result.success) {
-                // Registration successful
-                showMessage('Registration successful! Redirecting to login...', 'success');
-                
-                // Clear form
-                registerForm.reset();
-                
-                // Redirect to login page after a short delay
-                setTimeout(() => {
-                    window.location.href = 'login.html';
-                }, 2000);
-            } else {
-                // Registration failed
-                const errorMessage = result.message || result.error || 'Registration failed';
-                showMessage(errorMessage, 'error');
-            }
+
+            // Process the server's response.
+            await handleApiResponse(response);
+
+            // If registration is successful, show a success message.
+            showMessage(registerMessage, 'Registration successful! Redirecting to login...', 'success');
+
+            // Clear the form fields.
+            registerForm.reset();
+
+            // Redirect the user to the login page after a short delay.
+            setTimeout(() => {
+                window.location.href = 'login.html';
+            }, 2000);
+
         } catch (error) {
-            // Network or other errors
+            // If an error occurs, log it to the console and show an error message to the user.
             console.error('Registration error:', error);
-            showMessage('Network error. Please try again.', 'error');
+            showMessage(registerMessage, error.message, 'error');
         } finally {
-            // Reset loading state
+            // No matter what, remove the loading state from the register button.
             setButtonLoading(registerButton, false);
         }
     }
-    
-    // Utility function to validate email format
+
+    // This utility function validates the format of an email address using a regular expression.
     function isValidEmail(email) {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        const emailRegex = /^[^
+@]+@[^
+@]+\.[^
+@]+$/;
         return emailRegex.test(email);
-    }
-    
-    // Utility function to show messages
-    function showMessage(message, type) {
-        if (!registerMessage) return;
-        
-        // Clear previous classes
-        registerMessage.className = '';
-        
-        // Set message and type class
-        registerMessage.textContent = message;
-        registerMessage.classList.add('message', type);
-        
-        // Add CSS for different message types if not already present
-        if (!document.querySelector('#message-styles')) {
-            const style = document.createElement('style');
-            style.id = 'message-styles';
-            style.textContent = `
-                .message {
-                    padding: 10px;
-                    border-radius: 4px;
-                    margin: 10px 0;
-                    text-align: center;
-                    font-weight: 500;
-                }
-                .message.success {
-                    background-color: #4CAF50;
-                    color: white;
-                }
-                .message.error {
-                    background-color: #f44336;
-                    color: white;
-                }
-                .message.info {
-                    background-color: #2196F3;
-                    color: white;
-                }
-            `;
-            document.head.appendChild(style);
-        }
-    }
-    
-    // Utility function to set button loading state
-    function setButtonLoading(button, loading) {
-        if (loading) {
-            button.classList.add('loading');
-            button.disabled = true;
-            // Store original text if not already stored
-            if (!button.dataset.originalText) {
-                button.dataset.originalText = button.textContent;
-            }
-            button.textContent = 'Loading...';
-        } else {
-            button.classList.remove('loading');
-            button.disabled = false;
-            // Restore original text
-            if (button.dataset.originalText) {
-                button.textContent = button.dataset.originalText;
-            }
-        }
     }
 });

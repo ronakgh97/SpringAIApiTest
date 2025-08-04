@@ -8,15 +8,15 @@
 /* Define CSS Variables for Consistency */
 :root {
   --primary-color: #C0C0C0;
-  --text-light: #E0E0E0; /* Improved contrast */
+  --text-light: #E0E0E0;
   --bg-gradient: linear-gradient(135deg, #000000 0%, #1a1a1a 50%, #2a2a2a 100%);
-  --glass-bg: rgba(255, 255, 255, 0.05); /* More modern glass effect */
+  --glass-bg: rgba(255, 255, 255, 0.05);
   --glass-blur: blur(30px);
-  --border-radius: 16px; /* Consistent rounding */
+  --border-radius: 16px;
   --spacing-sm: 8px;
   --spacing-md: 16px;
   --spacing-lg: 32px;
-  --font-stack: 'Inter', system-ui, -apple-system, sans-serif; /* Modern sans-serif */
+  --font-stack: 'Inter', system-ui, -apple-system, sans-serif;
   --transition: all 0.3s ease-in-out;
 }
 
@@ -28,17 +28,22 @@ body {
   align-items: center;
   justify-content: center;
   padding: var(--spacing-md);
-  line-height: 1.5; /* Better readability */
+  line-height: 1.5;
 }
 
 /* Wrapper */
 .wrapper {
   width: 100%;
   max-width: 400px;
-  margin: auto; /* Explicit centering */
+  margin: auto;
 }
 
-/* Login Box */
+/* Main Content Area */
+main {
+    width: 100%;
+}
+
+/* Login & Register Box */
 .login_box {
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur);
@@ -49,30 +54,29 @@ body {
   animation: fadeInUp 0.8s ease-out;
 }
 
-/* Login Header */
+/* Header */
 .login-header {
   text-align: center;
   margin-bottom: var(--spacing-lg);
 }
 
 .login-header span {
-  font-size: clamp(28px, 4vw, 32px); /* Responsive scaling */
+  font-size: clamp(28px, 4vw, 32px);
   font-weight: 600;
   color: #ffffff;
   letter-spacing: -0.5px;
   text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
 }
 
-/* Input Box Container */
+/* Input Box */
 .input_box {
   position: relative;
   margin-bottom: var(--spacing-md);
 }
 
-/* Input Field */
 .input-field {
   width: 100%;
-  height: clamp(50px, 8vh, 55px); /* Responsive height */
+  height: clamp(50px, 8vh, 55px);
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: var(--border-radius);
@@ -92,18 +96,16 @@ body {
 }
 
 .input-field::placeholder {
-  color: rgba(255, 255, 255, 0.5); /* Subtle placeholders for guidance */
+  color: rgba(255, 255, 255, 0.5);
   opacity: 1;
 }
 
-/* Enhanced Focus for Accessibility */
 .input-field:focus {
-  outline: 2px solid var(--primary-color); /* Visible focus state */
+  outline: 2px solid var(--primary-color);
 }
 
-/* Validation States */
 .input-field.invalid {
-  border-color: #FF6B6B; /* Error state */
+  border-color: #FF6B6B;
   box-shadow: 0 0 0 2px rgba(255, 107, 107, 0.2);
 }
 
@@ -120,13 +122,12 @@ body {
   z-index: 1;
 }
 
-/* Floating Label Effect */
 .input-field:focus + .label,
 .input-field:not(:placeholder-shown) + .label {
   top: -8px;
   left: 12px;
   font-size: 12px;
-  color: var(--text-light); /* Better contrast */
+  color: var(--text-light);
   background: var(--bg-gradient);
   padding: 0 var(--spacing-sm);
   border-radius: 4px;
@@ -149,46 +150,34 @@ body {
   color: var(--primary-color);
 }
 
-/* Submit Button */
-.submit {
+/* Buttons */
+.submit, .status {
   width: 100%;
   height: clamp(50px, 8vh, 55px);
-  background: #A8A8A8; /* Toned-down single color */
-  border: none;
   border-radius: var(--border-radius);
   font-size: clamp(14px, 4vw, 16px);
   font-weight: 600;
-  color: #000000;
   cursor: pointer;
   transition: var(--transition);
+}
+
+.submit {
+  background: #A8A8A8;
+  border: none;
+  color: #000000;
   box-shadow: 0 4px 15px rgba(255, 255, 255, 0.3);
 }
 
 .submit:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 25px rgba(255, 255, 255, 0.4);
-  background: #B8B8B8; /* Subtle hover change */
+  background: #B8B8B8;
 }
 
-/* Loading State (Add via JS if needed) */
-.submit.loading {
-  opacity: 0.7;
-  cursor: not-allowed;
-  /* Add spinner animation here if desired */
-}
-
-/* Status Button */
 .status {
-  width: 100%;
-  height: clamp(50px, 8vh, 55px);
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: var(--border-radius);
-  font-size: clamp(14px, 4vw, 16px);
-  font-weight: 600;
   color: rgba(255, 255, 255, 0.9);
-  cursor: pointer;
-  transition: var(--transition);
 }
 
 .status:hover {
@@ -197,6 +186,11 @@ body {
   color: #ffffff;
   transform: translateY(-2px);
   box-shadow: 0 4px 15px rgba(255, 255, 255, 0.2);
+}
+
+.submit.loading, .status.loading {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 
 /* Register Link */
@@ -222,46 +216,15 @@ body {
   text-decoration: underline;
 }
 
-/* Responsive Design (Mobile-First) */
-@media (max-width: 480px) {
-  .wrapper {
-    max-width: 100%;
-    margin: 0 var(--spacing-sm);
-  }
-
-  .login_box {
-    padding: var(--spacing-md) var(--spacing-sm);
-  }
-}
-
-@media (min-width: 481px) and (max-width: 768px) {
-  /* Tablet adjustments */
-  .wrapper {
-    max-width: 600px;
-  }
-}
-
-/* Animation for Page Load */
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Dashboard Specific Styles */
+/* Dashboard Styles */
 .dashboard-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 20px;
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(30px);
-  border-radius: 16px;
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  border-radius: var(--border-radius);
   margin-bottom: 30px;
   flex-wrap: wrap;
 }
@@ -277,7 +240,7 @@ body {
   width: 50px;
   height: 50px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #000000 0%, #1a1a1a 50%, #2a2a2a 100%);
+  background: var(--bg-gradient);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -293,7 +256,7 @@ body {
   border-radius: 8px;
   cursor: pointer;
   font-weight: 600;
-  transition: all 0.3s ease;
+  transition: var(--transition);
   white-space: nowrap;
 }
 
@@ -328,12 +291,12 @@ body {
 }
 
 .feature-card {
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(30px);
-  border-radius: 16px;
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  border-radius: var(--border-radius);
   padding: 30px;
   text-align: center;
-  transition: all 0.3s ease;
+  transition: var(--transition);
   border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
@@ -345,7 +308,7 @@ body {
 .feature-icon {
   font-size: 3rem;
   margin-bottom: 20px;
-  color: #C0C0C0;
+  color: var(--primary-color);
 }
 
 .feature-card h3 {
@@ -371,38 +334,23 @@ body {
   text-align: center;
   font-weight: 500;
 }
+
 .message.success {
   background-color: #4CAF50;
   color: white;
 }
+
 .message.error {
   background-color: #f44336;
   color: white;
 }
+
 .message.info {
   background-color: #2196F3;
   color: white;
 }
 
-/* Loading Button State */
-.submit.loading, .status.loading {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-
-/* Improved Focus States for Accessibility */
-.input-field:focus {
-  outline: 2px solid var(--primary-color);
-  outline-offset: 2px;
-}
-
-/* Better Input Validation States */
-.input-field.invalid {
-  border-color: #FF6B6B;
-  box-shadow: 0 0 0 2px rgba(255, 107, 107, 0.2);
-}
-
-/* Enhanced Responsive Design */
+/* Responsive Design */
 @media (max-width: 768px) {
   .dashboard-header {
     flex-direction: column;
@@ -429,11 +377,12 @@ body {
 
 @media (max-width: 480px) {
   .wrapper {
-    padding: 10px;
+    max-width: 100%;
+    margin: 0 var(--spacing-sm);
   }
-  
+
   .login_box {
-    padding: 20px 15px;
+    padding: var(--spacing-md) var(--spacing-sm);
   }
   
   .login-header span {
@@ -459,3 +408,16 @@ body {
     font-size: 16px;
   }
 }
+
+/* Animation */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+

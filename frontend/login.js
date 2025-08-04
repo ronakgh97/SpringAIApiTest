@@ -1,191 +1,138 @@
+// This script runs after the HTML document has been fully loaded.
 document.addEventListener('DOMContentLoaded', function() {
-    // Get form elements
+    // Get references to the HTML elements we need to interact with.
     const loginForm = document.getElementById('loginForm');
     const emailInput = document.getElementById('email');
     const passwordInput = document.getElementById('password');
     const loginButton = loginForm.querySelector('.submit');
     const loginMessage = document.getElementById('loginMessage');
     const statusButton = document.querySelector('.status');
-    
-    // Base API URLs - adjust these to match your Spring Boot server
-    const API_BASE_URL = 'http://localhost:8080/api/v1/users';
-    const HEALTH_CHECK_URL = 'http://localhost:8080/api/v1/health';
-    
-    // Add event listener for login form submission
+
+    // Add an event listener to the login form to handle submission.
     loginForm.addEventListener('submit', function(e) {
+        // Prevent the default form submission, which would reload the page.
         e.preventDefault();
+        // Call the function to handle the login process.
         handleLogin();
     });
-    
-    // Add event listener for status check button
+
+    // Add an event listener to the status button to check the system status.
     if (statusButton) {
         statusButton.addEventListener('click', function(e) {
+            // Prevent any default button action.
             e.preventDefault();
+            // Call the function to check the system status.
             checkSystemStatus();
         });
     }
-    
-    // Handle login functionality
+
+    // This function handles the user login process.
     async function handleLogin() {
-        // Get input values
+        // Get the trimmed values from the email and password input fields.
         const email = emailInput.value.trim();
         const password = passwordInput.value.trim();
-        
-        // Validate inputs
+
+        // Check if either field is empty.
         if (!email || !password) {
-            showMessage('Please fill in all fields', 'error');
+            // If so, show an error message and stop the function.
+            showMessage(loginMessage, 'Please fill in all fields', 'error');
             return;
         }
-        
-        // Show loading state
+
+        // Put the login button in a loading state.
         setButtonLoading(loginButton, true);
-        showMessage('Logging in...', 'info');
-        
+        // Show an informational message to the user.
+        showMessage(loginMessage, 'Logging in...', 'info');
+
         try {
-            // Prepare login data (using userName as email based on backend DTO)
+            // Create the data object to send to the server.
             const loginData = {
                 userName: email,
                 password: password
             };
-            
-            // Make API call to login endpoint
-            const response = await fetch(`${API_BASE_URL}/login`, {
+
+            // Send a POST request to the login endpoint with the user's credentials.
+            const response = await fetch(API_CONFIG.BASE_URL + API_CONFIG.endpoints.LOGIN, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(loginData)
             });
-            
-            // Parse response
-            const result = await response.json();
-            
-            if (response.ok && result.success) {
-                // Login successful
-                showMessage('Login successful! Redirecting...', 'success');
-                
-                // Store JWT token in localStorage
-                localStorage.setItem('authToken', result.data.token);
-                localStorage.setItem('user', JSON.stringify(result.data.user));
-                
-                // Redirect to a dashboard or home page (you can customize this)
-                setTimeout(() => {
-                    window.location.href = 'dashboard.html'; // Or wherever you want to redirect
-                }, 1500);
-            } else {
-                // Login failed
-                const errorMessage = result.message || result.error || 'Login failed';
-                showMessage(errorMessage, 'error');
-            }
+
+            // Process the server's response.
+            const result = await handleApiResponse(response);
+
+            // If login is successful, show a success message.
+            showMessage(loginMessage, 'Login successful! Redirecting...', 'success');
+
+            // Store the authentication token and user data in the browser's local storage.
+            localStorage.setItem('authToken', result.data.token);
+            localStorage.setItem('user', JSON.stringify(result.data.user));
+
+            // Redirect the user to the dashboard page after a short delay.
+            setTimeout(() => {
+                window.location.href = 'dashboard.html';
+            }, 1500);
+
         } catch (error) {
-            // Network or other errors
+            // If an error occurs, log it to the console and show an error message to the user.
             console.error('Login error:', error);
-            showMessage('Network error. Please try again.', 'error');
+            showMessage(loginMessage, error.message, 'error');
         } finally {
-            // Reset loading state
+            // No matter what, remove the loading state from the login button.
             setButtonLoading(loginButton, false);
         }
     }
-    
-    // Check system health status
+
+    // This function checks the health of the backend system.
     async function checkSystemStatus() {
+        // Put the status button in a loading state.
         setButtonLoading(statusButton, true);
-        showMessage('Checking system status...', 'info');
-        
+        // Show an informational message.
+        showMessage(loginMessage, 'Checking system status...', 'info');
+
         try {
-            // Make API call to health check endpoint
-            const response = await fetch(HEALTH_CHECK_URL, {
+            // Send a GET request to the health check endpoint.
+            const response = await fetch(API_CONFIG.BASE_URL + API_CONFIG.endpoints.HEALTH_CHECK, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json'
                 }
             });
-            
+
+            // Get the JSON data from the response.
             const result = await response.json();
-            
+
+            // If the request was successful, show the system status.
             if (response.ok) {
-                showMessage(`System Status: ${result.status} - ${result.service} v${result.version}`, 'success');
+                showMessage(loginMessage, `System Status: ${result.status} - ${result.service} v${result.version}`, 'success');
             } else {
-                showMessage('System status check failed', 'error');
+                // Otherwise, show an error message.
+                showMessage(loginMessage, 'System status check failed', 'error');
             }
         } catch (error) {
+            // If a network error occurs, log it and show an error message.
             console.error('Status check error:', error);
-            showMessage('Network error. Please try again.', 'error');
+            showMessage(loginMessage, 'Network error. Please try again.', 'error');
         } finally {
+            // Always remove the loading state from the status button.
             setButtonLoading(statusButton, false);
         }
     }
-    
-    // Utility function to show messages
-    function showMessage(message, type) {
-        if (!loginMessage) return;
-        
-        // Clear previous classes
-        loginMessage.className = '';
-        
-        // Set message and type class
-        loginMessage.textContent = message;
-        loginMessage.classList.add('message', type);
-        
-        // Add CSS for different message types if not already present
-        if (!document.querySelector('#message-styles')) {
-            const style = document.createElement('style');
-            style.id = 'message-styles';
-            style.textContent = `
-                .message {
-                    padding: 10px;
-                    border-radius: 4px;
-                    margin: 10px 0;
-                    text-align: center;
-                    font-weight: 500;
-                }
-                .message.success {
-                    background-color: #4CAF50;
-                    color: white;
-                }
-                .message.error {
-                    background-color: #f44336;
-                    color: white;
-                }
-                .message.info {
-                    background-color: #2196F3;
-                    color: white;
-                }
-            `;
-            document.head.appendChild(style);
-        }
-    }
-    
-    // Utility function to set button loading state
-    function setButtonLoading(button, loading) {
-        if (loading) {
-            button.classList.add('loading');
-            button.disabled = true;
-            // Store original text if not already stored
-            if (!button.dataset.originalText) {
-                button.dataset.originalText = button.textContent;
-            }
-            button.textContent = 'Loading...';
-        } else {
-            button.classList.remove('loading');
-            button.disabled = false;
-            // Restore original text
-            if (button.dataset.originalText) {
-                button.textContent = button.dataset.originalText;
-            }
-        }
-    }
-    
-    // Check if user is already logged in on page load
+
+    // This function checks if the user is already logged in when the page loads.
     function checkInitialAuthState() {
+        // Check if an authentication token exists in local storage.
         const token = localStorage.getItem('authToken');
         if (token) {
-            // User appears to be logged in, check if token is still valid
-            // You might want to implement token validation here
+            // If a token is found, it suggests the user is already logged in.
+            // You could add logic here to automatically redirect to the dashboard.
             console.log('User appears to be logged in');
+            // window.location.href = 'dashboard.html';
         }
     }
-    
-    // Run initial auth state check
+
+    // Run the initial authentication check when the script loads.
     checkInitialAuthState();
 });
