@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta charset="viewport" content="width=device-width, inital-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <title>Login</title>
@@ -10,31 +10,32 @@
 <body>
 
     <div class="wrapper">
-        <div class="login_box">
+        <form class="login_box" id="loginForm">
             <div class="login-header">
                 <span>Login</span>
             </div>
             <div class="input_box">
-                <input type ="text" id="userName" class="input-field" required>
-                <label for="userName" class="label">Username</label>
+                <input type="text" id="email" class="input-field" required>
+                <label for="email" class="label">Email</label>
                 <i class="bx bx-user icon"></i>
             </div>
             <div class="input_box">
-                <input type ="text" id="Password" class="input-field" required>
-                <label for="Password" class="label">Password</label>
+                <input type="password" id="password" class="input-field" required>
+                <label for="password" class="label">Password</label>
                 <i class="bx bx-lock-alt icon"></i>
             </div>
             <div class="input_box">
-                <input type="submit" class="submit" value="Login">
+                <button type="submit" class="submit">Login</button>
             </div>
+            <div id="loginMessage" style="text-align: center; margin-top: 10px;"></div>
             <div class="register">
                 <span>Register here ->  <a href="register.html">Register</a></span>
             </div>
             <div class="input_box">
-                <input type="submit" class="status" value="Check Status">
+                <button type="button" class="status" id="statusButton">Check Status</button>
             </div>
-        </div>
+        </form>
     </div>
-
+<script src="login.js"></script>
 </body>
 </html>
