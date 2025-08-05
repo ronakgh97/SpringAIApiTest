@@ -2,7 +2,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Get references to the HTML elements we need to interact with.
     const loginForm = document.getElementById('loginForm');
-    const emailInput = document.getElementById('email');
+    const usernameInput = document.getElementById('username');
     const passwordInput = document.getElementById('password');
     const loginButton = loginForm.querySelector('.submit');
     const loginMessage = document.getElementById('loginMessage');
@@ -29,11 +29,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // This function handles the user login process.
     async function handleLogin() {
         // Get the trimmed values from the email and password input fields.
-        const email = emailInput.value.trim();
+        const username = usernameInput.value.trim();
         const password = passwordInput.value.trim();
 
         // Check if either field is empty.
-        if (!email || !password) {
+        if (!username || !password) {
             // If so, show an error message and stop the function.
             showMessage(loginMessage, 'Please fill in all fields', 'error');
             return;
@@ -47,7 +47,7 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             // Create the data object to send to the server.
             const loginData = {
-                userName: email,
+                userName: username,
                 password: password
             };
 
@@ -60,8 +60,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 body: JSON.stringify(loginData)
             });
 
-            // Process the server's response.
-            const result = await handleApiResponse(response);
+            const result = await response.json();
+
+            if (!response.ok || !result.success) {
+                const errorMessage = result.message || 'Login failed. Please try again.';
+                throw new Error(errorMessage);
+            }
 
             // If login is successful, show a success message.
             showMessage(loginMessage, 'Login successful! Redirecting...', 'success');

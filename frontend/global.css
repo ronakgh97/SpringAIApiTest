@@ -1,0 +1,85 @@
+/* Reset and Base Styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Define CSS Variables for Consistency */
+:root {
+  --primary-color: #C0C0C0;
+  --text-light: #E0E0E0;
+  --bg-gradient: linear-gradient(135deg, #000000 0%, #1a1a1a 50%, #2a2a2a 100%);
+  --glass-bg: rgba(255, 255, 255, 0.05);
+  --glass-blur: blur(30px);
+  --border-radius: 16px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 32px;
+  --font-stack: 'Inter', system-ui, -apple-system, sans-serif;
+  --transition: all 0.3s ease-in-out;
+}
+
+body {
+  font-family: var(--font-stack);
+  background: var(--bg-gradient);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-md);
+  line-height: 1.5;
+}
+
+/* Wrapper */
+.wrapper {
+  width: 100%;
+  max-width: 400px;
+  margin: auto;
+}
+
+/* Main Content Area */
+main {
+    width: 100%;
+}
+
+/* Hidden Utility Class */
+.hidden {
+  display: none;
+}
+
+/* Message Styles (General) */
+.message {
+  padding: 10px;
+  border-radius: 4px;
+  margin: 10px 0;
+  text-align: center;
+  font-weight: 500;
+}
+
+.message.success {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.message.error {
+  background-color: #f44336;
+  color: white;
+}
+
+.message.info {
+  background-color: #2196F3;
+  color: white;
+}
+
+/* Animation */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

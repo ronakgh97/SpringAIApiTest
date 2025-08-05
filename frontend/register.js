@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Get references to the HTML elements we need to interact with.
     const registerForm = document.getElementById('registerForm');
-    const nameInput = document.getElementById('name');
+    const usernameInput = document.getElementById('username');
     const emailInput = document.getElementById('email');
     const passwordInput = document.getElementById('password');
     const registerButton = registerForm.querySelector('.submit');
@@ -18,12 +18,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // This function handles the user registration process.
     async function handleRegistration() {
         // Get the trimmed values from the input fields.
-        const name = nameInput.value.trim();
+        const username = usernameInput.value.trim();
         const email = emailInput.value.trim();
         const password = passwordInput.value.trim();
 
         // Validate that all fields are filled out.
-        if (!name || !email || !password) {
+        if (!username || !email || !password) {
             showMessage(registerMessage, 'Please fill in all fields', 'error');
             return;
         }
@@ -41,7 +41,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // Validate the username length.
-        if (name.length < 3) {
+        if (username.length < 3) {
             showMessage(registerMessage, 'Username must be at least 3 characters long', 'error');
             return;
         }
@@ -54,7 +54,7 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             // Create the data object to send to the server.
             const registrationData = {
-                userName: name,
+                userName: username,
                 gmail: email,
                 password: password
             };
@@ -68,8 +68,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 body: JSON.stringify(registrationData)
             });
 
-            // Process the server's response.
-            await handleApiResponse(response);
+            const result = await response.json();
+
+            if (!response.ok || !result.success) {
+                const errorMessage = result.message || 'Registration failed. Please try again.';
+                throw new Error(errorMessage);
+            }
 
             // If registration is successful, show a success message.
             showMessage(registerMessage, 'Registration successful! Redirecting to login...', 'success');
@@ -94,10 +98,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // This utility function validates the format of an email address using a regular expression.
     function isValidEmail(email) {
-        const emailRegex = /^[^
-@]+@[^
-@]+\.[^
-@]+$/;
+        const emailRegex = /^[\S]+@[\S]+\.[\S]+$/;
         return emailRegex.test(email);
     }
 });

@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="global.css">
+    <link rel="stylesheet" href="dashboard.css">
     <title>Dashboard</title>
 </head>
 <body>
@@ -31,6 +32,13 @@
             </div>
             
             <div class="features-grid">
+                    <div class="feature-icon">
+                        <i class='bx bx-chat'></i>
+                    </div>
+                    <h3>Chat</h3>
+                    <p>Start a new chat session with the AI.</p>
+                </div>
+
                 <div class="feature-card">
                     <div class="feature-icon">
                         <i class='bx bx-user-circle'></i>
@@ -54,8 +62,6 @@
                     <h3>Activity Log</h3>
                     <p>View your recent activity and track your usage history.</p>
                 </div>
-            </div>
-            
             <div id="errorMessage" class="hidden" style="text-align: center; margin-top: 20px; color: #f44336;">
                 You need to be logged in to view this page.
             </div>
