@@ -1,4 +1,3 @@
-
 // This object centralizes all API configuration for the application.
 const API_CONFIG = {
     // The base URL for all API requests.
@@ -18,3 +17,5 @@ const API_CONFIG = {
         HEALTH_CHECK: '/health'
     }
 };
+
+export default API_CONFIG;
