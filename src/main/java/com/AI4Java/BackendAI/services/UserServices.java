@@ -45,7 +45,7 @@ public class UserServices {
         }
 
         log.info("Granting ADMIN role to user: {}", user.getUserName());
-        user.setRoles(List.of("USER", "ADMIN")); // Always use ROLE_ prefix
+        user.setRoles(List.of("USER", "ADMIN"));
         UserEntries savedUser = userRepo.save(user);
         log.info("Admin role granted successfully to user: {}", savedUser.getUserName());
 
@@ -81,6 +81,11 @@ public class UserServices {
     public UserEntries findByUserName(String UserName){
         log.info("Finding user by username: {}", UserName);
         return userRepo.findByUserName(UserName);
+    }
+
+    public UserEntries findByMail(String gmail){
+        log.info("Finding user by gmail: {}", gmail);
+        return userRepo.findByGmail(gmail);
     }
 
     public Optional<UserEntries> findById(ObjectId id){

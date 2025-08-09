@@ -8,5 +8,7 @@ public interface UserRepo extends MongoRepository<UserEntries, ObjectId> {
 
     UserEntries findByUserName(String username);
 
+    UserEntries findByGmail(String username);
+
     void deleteByUserName(String username);
 }

@@ -9,15 +9,17 @@ public class UserResponseDto {
     private String gmail;
     private List<String> roles;
     private int sessionCount;
+    private boolean isVerified;
 
     public UserResponseDto() {}
 
-    public UserResponseDto(String userId, String userName, String gmail, List<String> roles, int sessionCount) {
+    public UserResponseDto(String userId, String userName, String gmail, List<String> roles, int sessionCount, boolean isVerified) {
         this.userId = userId;
         this.userName = userName;
         this.gmail = gmail;
         this.roles = roles;
         this.sessionCount = sessionCount;
+        this.isVerified = isVerified;
     }
 
     // Getters and setters
@@ -59,5 +61,13 @@ public class UserResponseDto {
 
     public void setSessionCount(int sessionCount) {
         this.sessionCount = sessionCount;
+    }
+
+    public boolean isVerified() {
+        return isVerified;
+    }
+
+    public void setVerified(boolean verified) {
+        isVerified = verified;
     }
 }

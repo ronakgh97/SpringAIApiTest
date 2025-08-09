@@ -26,7 +26,8 @@ public class UserMapper {
             entity.getUserName(),
             entity.getGmail(),
             entity.getRoles(),
-            entity.getSessionEntries() != null ? entity.getSessionEntries().size() : 0
+            entity.getSessionEntries() != null ? entity.getSessionEntries().size() : 0,
+            entity.isVerified()
         );
     }
 }

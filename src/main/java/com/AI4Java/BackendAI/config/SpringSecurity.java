@@ -43,7 +43,7 @@ public class SpringSecurity {
                                 "/api/v1/health/**"
                         ).permitAll()
                         .requestMatchers("/api/v1/admins/**").hasRole("ADMIN")
-                        .requestMatchers("/api/v1/users/**", "/api/v1/sessions/**","/api/v1/chat/**").authenticated()
+                        .requestMatchers("/api/v1/users/**", "/api/v1/sessions/**","/api/v1/chat/**", "/api/v1/verify/**").authenticated()
                 .anyRequest().authenticated())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .csrf(AbstractHttpConfigurer::disable)

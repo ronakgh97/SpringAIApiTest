@@ -72,7 +72,7 @@ public class CreateUserWithOneSessionMessage {
                 .andExpect(status().isOk())
                 .andReturn();
 
-        Thread.sleep(25000); //For to save the sendMessage
+        Thread.sleep(30000); //For to save the sendMessage
 
     }
 

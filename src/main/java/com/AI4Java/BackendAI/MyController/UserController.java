@@ -53,6 +53,12 @@ public class UserController {
             throw new UserException.UserAlreadyExistsException(registrationDto.getUserName());
         }
 
+        //Check if gmail already exists
+        if (userServices.findByMail(registrationDto.getGmail()) != null) {
+            log.error("User already exists: {}", registrationDto.getUserName());
+            throw new UserException.UserAlreadyExistsException(registrationDto.getGmail());
+        }
+
         // Convert DTO to entity and save
         UserEntries userEntity = userMapper.toEntity(registrationDto);
         UserEntries savedUser = userServices.saveNewEntry(userEntity);
