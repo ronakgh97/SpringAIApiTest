@@ -9,8 +9,8 @@ import java.time.LocalDateTime;
 @Component
 public class BasicTools {
 
-    @Tool(description = "Get the current date and time in the user's timezone")
-    String getCurrentDateTime() {
+    @Tool(name = "get_CurrentDateTime", description = "Get the current date and time in the user's timezone")
+    String get_CurrentDateTime() {
         return LocalDateTime.now().atZone(LocaleContextHolder.getTimeZone().toZoneId()).toString();
     }
 

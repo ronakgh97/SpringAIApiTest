@@ -39,14 +39,14 @@ public class UserLifecycleTest {
     @Test
     void testUserLifecycle() throws Exception {
         // 1. Register a new user
-        String userRegistrationDto = "{\"userName\":\"testuser\", \"password\":\"password\", \"gmail\":\"testuser@example.com\"}";
+        String userRegistrationDto = "{\"userName\":\"testLifeuser\", \"password\":\"password\", \"gmail\":\"testuserLife@example.com\"}";
         mockMvc.perform(post("/api/v1/users/register")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(userRegistrationDto))
                 .andExpect(status().isCreated());
 
         // 2. Login with the newly created user
-        String userLoginDto = "{\"userName\":\"testuser\", \"password\":\"password\"}";
+        String userLoginDto = "{\"userName\":\"testLifeuser\", \"password\":\"password\"}";
         MvcResult loginResult = mockMvc.perform(post("/api/v1/users/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(userLoginDto))
@@ -57,7 +57,7 @@ public class UserLifecycleTest {
         String token = objectMapper.readTree(loginResponse).get("data").get("token").asText();
 
         // 3. Create a new chat session
-        String sessionCreateDto = "{\"nameSession\":\"Test Session\", \"model\":\"google/gemma-3-4b\"}";
+        String sessionCreateDto = "{\"nameSession\":\"Test Session\", \"model\":\"google/gemma-3n-e4b\"}";
         MvcResult sessionResult = mockMvc.perform(post("/api/v1/sessions/create")
                 .header("Authorization", "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON)

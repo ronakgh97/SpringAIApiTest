@@ -2,12 +2,10 @@ package com.AI4Java.BackendAI.config;
 
 import com.AI4Java.BackendAI.config.filter.JwtFilter;
 import com.AI4Java.BackendAI.services.userDetailsServices;
-import com.AI4Java.BackendAI.utils.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -43,7 +41,8 @@ public class SpringSecurity {
                                 "/api/v1/health/**"
                         ).permitAll()
                         .requestMatchers("/api/v1/admins/**").hasRole("ADMIN")
-                        .requestMatchers("/api/v1/users/**", "/api/v1/sessions/**","/api/v1/chat/**", "/api/v1/verify/**").authenticated()
+                        .requestMatchers("/api/v1/chat/**").permitAll()
+                        .requestMatchers("/api/v1/users/**", "/api/v1/sessions/**", "/api/v1/verify/**").authenticated()
                 .anyRequest().authenticated())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .csrf(AbstractHttpConfigurer::disable)

@@ -21,11 +21,10 @@ public class CreateUserWithOneSessionMessage {
     @Autowired
     private ObjectMapper objectMapper;
 
-
     @Test
     void createUser() throws Exception {
         // 1. Register a new user
-        String userRegistrationDto = "{\"userName\":\"newuser\", \"password\":\"newuserpassword\", \"gmail\":\"newuser@example.com\"}";
+        String userRegistrationDto = "{\"userName\":\"newuser\", \"password\":\"newuserpassword\", \"gmail\":\"ronakgh97@gmail.com\"}";
         mockMvc.perform(post("/api/v1/users/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(userRegistrationDto))
@@ -48,7 +47,7 @@ public class CreateUserWithOneSessionMessage {
 
     void createSession(String token) throws Exception {
         // 3. Create a new chat session
-        String sessionCreateDto = "{\"nameSession\":\"New Session\", \"model\":\"google/gemma-3-4b\"}";
+        String sessionCreateDto = "{\"nameSession\":\"New Session\", \"model\":\"google/gemma-3n-e4b\"}";
         MvcResult sessionResult = mockMvc.perform(post("/api/v1/sessions/create")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -72,7 +71,7 @@ public class CreateUserWithOneSessionMessage {
                 .andExpect(status().isOk())
                 .andReturn();
 
-        Thread.sleep(30000); //For to save the sendMessage
+        Thread.sleep(50000); //For to save the sendMessage
 
     }
 

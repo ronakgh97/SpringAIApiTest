@@ -1,6 +1,8 @@
 package com.AI4Java.BackendAI.AI;
 
 import com.AI4Java.BackendAI.AI.tools.BasicTools;
+import com.AI4Java.BackendAI.AI.tools.EmailTools;
+import com.AI4Java.BackendAI.AI.tools.WebSearchTools;
 import com.AI4Java.BackendAI.entries.SessionEntries;
 import com.AI4Java.BackendAI.services.SessionServices;
 import org.bson.types.ObjectId;
@@ -32,6 +34,14 @@ public class AiClient_Updated {
     @Autowired
     private SessionServices sessionServices;
 
+    @Autowired
+    private BasicTools basicTools;
+
+    @Autowired
+    private EmailTools emailServiceTools;
+
+    @Autowired
+    private WebSearchTools webSearchTools;
 
     private final ChatMemory chatMemory;
     private final OpenAiApi openAiApi;
@@ -61,7 +71,7 @@ public class AiClient_Updated {
                         )))
                 .build();
         this.systemText = """
-                You are a Japanese Tour Assistant,
+                You are a English-Speaking Japanese Tour Assistant in Tokyo,
                 Your name is Mitsubishi,
                 YOU and this SYSTEM is made and trained by Mitsubishi Corporation.
                 """;
@@ -69,10 +79,11 @@ public class AiClient_Updated {
         log.info("AiClient_Updated initialized successfully.");
     }
 
-    public Flux<String> getAiResponse(ObjectId sessionId, String userPrompt) {
+    public Flux<String> getAiResponse(ObjectId sessionId, String userPrompt, String username) {
         String convId = sessionId.toString();
-        log.info("Getting AI response for session ID: {} (conversation ID: {})", sessionId, convId);
+        log.info("Getting AI response for session ID: {} (conversation ID: {}) for user: {}", sessionId, convId, username);
         log.debug("User prompt: {}", userPrompt);
+
 
         SessionEntries sessionEntries = sessionServices.getById(sessionId)
                 .orElseThrow(() -> new RuntimeException("Session not found with ID: " + sessionId));
@@ -105,7 +116,7 @@ public class AiClient_Updated {
                 .prompt()
                 .system(systemText)
                 .user(userPrompt)
-                .tools(new BasicTools())
+                .tools(basicTools, emailServiceTools, webSearchTools)
                 .stream()
                 .chatResponse()
                 .doOnError(e -> log.error("Error during AI response streaming for session {}", convId, e))
