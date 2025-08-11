@@ -1,4 +1,4 @@
-# BackendAI - Java Spring Boot AI Chat Application
+# SpringAI - Java Spring GenAI Application
 
 A comprehensive Java Spring Boot application providing AI-powered chat functionality with user authentication, session management, and robust error handling.
 
