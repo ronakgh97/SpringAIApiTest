@@ -47,7 +47,7 @@ public class CreateUserWithOneSessionMessage {
 
     void createSession(String token) throws Exception {
         // 3. Create a new chat session
-        String sessionCreateDto = "{\"nameSession\":\"New Session\", \"model\":\"google/gemma-3n-e4b\"}";
+        String sessionCreateDto = "{\"nameSession\":\"New Session\", \"model\":\"google/gemma-3-12b\"}";
         MvcResult sessionResult = mockMvc.perform(post("/api/v1/sessions/create")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)

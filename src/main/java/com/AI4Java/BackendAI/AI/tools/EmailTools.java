@@ -2,6 +2,7 @@ package com.AI4Java.BackendAI.AI.tools;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.ai.chat.model.ToolContext;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.SimpleMailMessage;
@@ -15,10 +16,12 @@ public class EmailTools {
 
     @Autowired
     private JavaMailSender mailSender;
-//TODO: set recipient_mail to current user's gmail
-        @Tool(name = "send_Mail", description = "Sends a message to gmail, Parameters: subject, body and recipient_mail.")
-    public String send_Mail(String subject, String body, String recipient_mail) {
+    //TODO: set recipient_mail to current user's gmail
+        @Tool(name = "send_Mail", description = "Sends a message to user's gmail, Parameters: subject and body")
+    public String sendMail(String subject, String body, ToolContext toolContext) {
         try {
+            String recipient_mail = toolContext.getContext().get("userMail").toString();
+            log.info(recipient_mail);
             SimpleMailMessage message = new SimpleMailMessage();
             message.setTo(recipient_mail);
             message.setSubject(subject);

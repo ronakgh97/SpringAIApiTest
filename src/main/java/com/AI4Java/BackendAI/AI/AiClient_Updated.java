@@ -4,7 +4,9 @@ import com.AI4Java.BackendAI.AI.tools.BasicTools;
 import com.AI4Java.BackendAI.AI.tools.EmailTools;
 import com.AI4Java.BackendAI.AI.tools.WebSearchTools;
 import com.AI4Java.BackendAI.entries.SessionEntries;
+import com.AI4Java.BackendAI.entries.UserEntries;
 import com.AI4Java.BackendAI.services.SessionServices;
+import com.AI4Java.BackendAI.services.UserServices;
 import org.bson.types.ObjectId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,6 +27,8 @@ import reactor.core.publisher.Flux;
 
 import java.net.http.HttpClient;
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 
 @Service
 public class AiClient_Updated {
@@ -33,6 +37,9 @@ public class AiClient_Updated {
 
     @Autowired
     private SessionServices sessionServices;
+
+    @Autowired
+    private UserServices userServices;
 
     @Autowired
     private BasicTools basicTools;
@@ -84,6 +91,9 @@ public class AiClient_Updated {
         log.info("Getting AI response for session ID: {} (conversation ID: {}) for user: {}", sessionId, convId, username);
         log.debug("User prompt: {}", userPrompt);
 
+        UserEntries userEntries = userServices.findByUserName(username);
+        /*Map<String,String> userContext = new HashMap<>();
+        userContext.put("userMail", userEntries.getGmail());*/
 
         SessionEntries sessionEntries = sessionServices.getById(sessionId)
                 .orElseThrow(() -> new RuntimeException("Session not found with ID: " + sessionId));
@@ -117,6 +127,7 @@ public class AiClient_Updated {
                 .system(systemText)
                 .user(userPrompt)
                 .tools(basicTools, emailServiceTools, webSearchTools)
+                .toolContext(Map.of("userMail", userEntries.getGmail()))
                 .stream()
                 .chatResponse()
                 .doOnError(e -> log.error("Error during AI response streaming for session {}", convId, e))
