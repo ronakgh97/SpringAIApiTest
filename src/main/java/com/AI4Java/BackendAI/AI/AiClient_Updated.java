@@ -1,8 +1,6 @@
 package com.AI4Java.BackendAI.AI;
 
-import com.AI4Java.BackendAI.AI.tools.BasicTools;
-import com.AI4Java.BackendAI.AI.tools.EmailTools;
-import com.AI4Java.BackendAI.AI.tools.WebSearchTools;
+import com.AI4Java.BackendAI.AI.tools.*;
 import com.AI4Java.BackendAI.entries.SessionEntries;
 import com.AI4Java.BackendAI.entries.UserEntries;
 import com.AI4Java.BackendAI.services.SessionServices;
@@ -24,7 +22,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
-
 import java.net.http.HttpClient;
 import java.time.Duration;
 import java.util.HashMap;
@@ -49,6 +46,12 @@ public class AiClient_Updated {
 
     @Autowired
     private WebSearchTools webSearchTools;
+
+    @Autowired
+    private WeatherTools weatherTools;
+
+    /*@Autowired
+    private DiagramTools diagramTools;*/
 
     private final ChatMemory chatMemory;
     private final OpenAiApi openAiApi;
@@ -126,7 +129,7 @@ public class AiClient_Updated {
                 .prompt()
                 .system(systemText)
                 .user(userPrompt)
-                .tools(basicTools, emailServiceTools, webSearchTools)
+                .tools(basicTools, emailServiceTools, webSearchTools, weatherTools)
                 .toolContext(Map.of("userMail", userEntries.getGmail()))
                 .stream()
                 .chatResponse()

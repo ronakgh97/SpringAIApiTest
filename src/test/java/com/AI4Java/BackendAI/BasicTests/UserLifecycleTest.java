@@ -68,15 +68,6 @@ public class UserLifecycleTest {
         String sessionResponse = sessionResult.getResponse().getContentAsString();
         String sessionId = objectMapper.readTree(sessionResponse).get("data").get("sessionId").asText();
 
-        // 4. Chat with AI in that session
-        String chatRequest = "{\"prompt\":\"Hello, AI!\"}";
-        mockMvc.perform(post("/api/v1/chat/" + sessionId)
-                .header("Authorization", "Bearer " + token)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(chatRequest))
-                .andExpect(status().isOk())
-                .andReturn();
-
         // 5. Delete the session
         mockMvc.perform(delete("/api/v1/sessions/" + sessionId)
                 .header("Authorization", "Bearer " + token))

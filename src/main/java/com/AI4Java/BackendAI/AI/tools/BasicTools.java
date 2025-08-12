@@ -5,7 +5,6 @@ import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Component;
 import java.time.LocalDateTime;
 
-
 @Component
 public class BasicTools {
 
