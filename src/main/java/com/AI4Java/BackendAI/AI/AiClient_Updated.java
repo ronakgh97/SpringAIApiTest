@@ -1,6 +1,9 @@
 package com.AI4Java.BackendAI.AI;
 
-import com.AI4Java.BackendAI.AI.tools.*;
+import com.AI4Java.BackendAI.AI.tools.Free.*;
+import com.AI4Java.BackendAI.AI.tools.Paid.SerpApiTools;
+import com.AI4Java.BackendAI.AI.tools.Free.WebSearchTools;
+import com.AI4Java.BackendAI.AI.tools.Paid.YouTubeSummarizerTools;
 import com.AI4Java.BackendAI.entries.SessionEntries;
 import com.AI4Java.BackendAI.entries.UserEntries;
 import com.AI4Java.BackendAI.services.SessionServices;
@@ -24,7 +27,6 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import java.net.http.HttpClient;
 import java.time.Duration;
-import java.util.HashMap;
 import java.util.Map;
 
 @Service
@@ -32,26 +34,35 @@ public class AiClient_Updated {
 
     private static final Logger log = LoggerFactory.getLogger(AiClient_Updated.class);
 
-    @Autowired
-    private SessionServices sessionServices;
+        @Autowired
+        private SessionServices sessionServices;
 
-    @Autowired
-    private UserServices userServices;
+        @Autowired
+        private UserServices userServices;
 
-    @Autowired
-    private BasicTools basicTools;
+        @Autowired
+        private BasicTools basicTools;
 
-    @Autowired
-    private EmailTools emailServiceTools;
+        @Autowired
+        private JavaEmailTools emailServiceTools;
 
-    @Autowired
-    private WebSearchTools webSearchTools;
+        @Autowired
+        private WebSearchTools webSearchTools;
 
-    @Autowired
-    private WeatherTools weatherTools;
+        @Autowired
+        private WeatherTools weatherTools;
 
-    /*@Autowired
-    private DiagramTools diagramTools;*/
+        @Autowired
+        private YouTubeSummarizerTools youTubeSummarizerTools;
+
+        @Autowired
+        private WebScraperTools webScraperTools;
+
+        @Autowired
+        private SerpApiTools serpApiTools;
+
+        @Autowired
+        private WikipediaTools wikipediaTools;
 
     private final ChatMemory chatMemory;
     private final OpenAiApi openAiApi;
@@ -81,10 +92,24 @@ public class AiClient_Updated {
                         )))
                 .build();
         this.systemText = """
-                You are a English-Speaking Japanese Tour Assistant in Tokyo,
-                Your name is Mitsubishi,
-                YOU and this SYSTEM is made and trained by Mitsubishi Corporation.
-                """;
+You are an English-Speaking Japanese AI Assistant,
+Your name is Hashimoto,
+YOU and this SYSTEM is made and trained by Hashira Corporation in Tokyo,
+
+These are the RULES that you must strictly follow --->>
+
+1. Do not expose your tools given, do not tell anything about tools.
+2. Analyze user intent thoughtfully - use capabilities based on what would genuinely help them, not just reactive responses.
+3. If multiple capabilities/tool serve the same purpose, combine their outputs for comprehensive responses.
+4. Do not mention the names of specific capabilities you used to process queries.
+5. Use tool-chaining strategically - when multiple steps can provide better results, execute them seamlessly.
+6. Always prioritize user value over showcasing capabilities.
+7. If a tool failed, try different tools which server the same purpose as fallback measure.
+""";
+
+        //8. During tool-chaining, if one tools fails, stop the whole chain then rethink and retry from beginning.
+        //9. If there are a lot of error and failure during tool usage or all fallbacks fails, stop and report it to USER.
+        //10. Never fabricate information, admit uncertainty when data is unavailable.
 
         log.info("AiClient_Updated initialized successfully.");
     }
@@ -107,7 +132,10 @@ public class AiClient_Updated {
         OpenAiChatOptions openAiChatOptions = OpenAiChatOptions.builder()
                 .model(model)
                 .temperature(0.7)
-                .maxTokens(256)
+                //.topP(0.90)
+                //.frequencyPenalty(1.15)
+                //.reasoningEffort("High")
+                .maxTokens(8192)
                 .build();
 
         OpenAiChatModel chatModel = OpenAiChatModel.builder()
@@ -129,7 +157,14 @@ public class AiClient_Updated {
                 .prompt()
                 .system(systemText)
                 .user(userPrompt)
-                .tools(basicTools, emailServiceTools, webSearchTools, weatherTools)
+                .tools(basicTools,
+                emailServiceTools,
+                webSearchTools,
+                weatherTools,
+                youTubeSummarizerTools,
+                webScraperTools,
+                serpApiTools,
+                wikipediaTools)
                 .toolContext(Map.of("userMail", userEntries.getGmail()))
                 .stream()
                 .chatResponse()
@@ -153,10 +188,8 @@ public class AiClient_Updated {
                         }
                     }
                     // Fallback for unknown formats
-                    log.warn("No content found in AI response for session {}. Returning empty string.", convId);
+                    //log.warn("No content found in AI response for session {}. Returning empty string.", convId);
                     return "";
-                });
-
-
+        });
     }
 }

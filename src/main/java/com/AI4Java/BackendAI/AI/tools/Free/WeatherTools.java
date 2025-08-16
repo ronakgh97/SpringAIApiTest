@@ -1,10 +1,11 @@
-package com.AI4Java.BackendAI.AI.tools;
+package com.AI4Java.BackendAI.AI.tools.Free;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.tool.annotation.Tool;
+import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import java.net.URLEncoder;
@@ -24,7 +25,9 @@ public class WeatherTools {
     
     @Tool(name = "get_current_weather", description = "Gets current weather conditions for any city worldwide. " +
             "Parameters: city (required), country (optional)")
-    public String get_current_weather(String city, String country) {
+    public String get_current_weather(
+            @ToolParam(description = "City name") String city,
+            @ToolParam(description = "2-letter country code", required = false) String country) {
         try {
             log.info("Getting current weather for city: {}, country: {}", city, country);
             
@@ -78,7 +81,10 @@ public class WeatherTools {
     
     @Tool(name = "get_weather_forecast", description = "Gets weather forecast for any city worldwide. " +
             "Parameters: city (required), country (optional), days (optional, 1-7 days, default 3)")
-    public String get_weather_forecast(String city, String country, String days) {
+    public String get_weather_forecast(
+            @ToolParam(description = "City name") String city,
+            @ToolParam(description = "2-letter country code", required = false) String country,
+            @ToolParam(description = "Days of forecast (1-7)", required = false) String days) {
         try {
             int forecastDays = Math.min(7, Math.max(1, days != null ? Integer.parseInt(days) : 3));
             
@@ -132,7 +138,9 @@ public class WeatherTools {
     
     @Tool(name = "compare_weather", description = "Compares current weather between two cities. " +
             "Parameters: city1 (required), city2 (required)")
-    public String compare_weather(String city1, String city2) {
+    public String compare_weather(
+            @ToolParam(description = "First city") String city1,
+            @ToolParam(description = "Second city") String city2) {
         try {
             log.info("Comparing weather between {} and {}", city1, city2);
             

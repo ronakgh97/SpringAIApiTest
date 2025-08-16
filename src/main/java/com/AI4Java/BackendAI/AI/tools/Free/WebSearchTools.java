@@ -1,8 +1,9 @@
-package com.AI4Java.BackendAI.AI.tools;
+package com.AI4Java.BackendAI.AI.tools.Free;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.tool.annotation.Tool;
+import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import java.net.URLEncoder;
@@ -14,14 +15,13 @@ public class WebSearchTools {
 
     private static final Logger log = LoggerFactory.getLogger(WebSearchTools.class);
 
-    @Tool(
-            name = "web_Search",
+    @Tool(name = "web_Search",
             description = "Searches the web using DuckDuckGo for current information. " +
                     "Use this when you need recent information, news, or facts not in your training data."+
                     "Returns top results with title, link, and snippet. " +
                     "Parameter: query - the search terms to look for."
     )
-    public String webSearch(String query) {
+    public String webSearch(@ToolParam(description = "Search terms") String query) {
         try {
             log.info("Performing web search for query: {}", query);
 

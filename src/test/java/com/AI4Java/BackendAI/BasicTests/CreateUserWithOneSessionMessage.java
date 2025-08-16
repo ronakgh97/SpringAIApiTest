@@ -24,14 +24,14 @@ public class CreateUserWithOneSessionMessage {
     @Test
     void createUser() throws Exception {
         // 1. Register a new user
-        String userRegistrationDto = "{\"userName\":\"newuser\", \"password\":\"newuserpassword\", \"gmail\":\"ronakgh97@gmail.com\"}";
+        String userRegistrationDto = "{\"userName\":\"ronak777\", \"password\":\"123456\", \"gmail\":\"ronakgh97@gmail.com\"}";
         mockMvc.perform(post("/api/v1/users/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(userRegistrationDto))
                 .andExpect(status().isCreated());
 
         // 2. Login with the newly created user
-        String userLoginDto = "{\"userName\":\"newuser\", \"password\":\"newuserpassword\"}";
+        String userLoginDto = "{\"userName\":\"ronak777\", \"password\":\"123456\"}";
         MvcResult loginResult = mockMvc.perform(post("/api/v1/users/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(userLoginDto))
@@ -47,7 +47,7 @@ public class CreateUserWithOneSessionMessage {
 
     void createSession(String token) throws Exception {
         // 3. Create a new chat session
-        String sessionCreateDto = "{\"nameSession\":\"New Session\", \"model\":\"google/gemma-3n-e4b\"}";
+        String sessionCreateDto = "{\"nameSession\":\"Session testing\", \"model\":\"google/gemma-3-4b\"}";
         MvcResult sessionResult = mockMvc.perform(post("/api/v1/sessions/create")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -63,7 +63,7 @@ public class CreateUserWithOneSessionMessage {
     }
 
     void sendMessage(String token, String sessionId) throws Exception {
-        String chatRequest = "{\"prompt\":\"Hello, Mitsubishi!!, What tools can you use?\"}";
+        String chatRequest = "{\"prompt\":\"Hello Hashimoto!!, Can you send me a mail of recent news on trump and putin visit alaska summit?\"}";
         mockMvc.perform(post("/api/v1/chat/" + sessionId)
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -71,7 +71,7 @@ public class CreateUserWithOneSessionMessage {
                 .andExpect(status().isOk())
                 .andReturn();
 
-        Thread.sleep(50000); //For to save the sendMessage
+        Thread.sleep(100000); //For to save the sendMessage
 
     }
 

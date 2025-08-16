@@ -1,5 +1,6 @@
 package com.AI4Java.BackendAI.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -10,6 +11,9 @@ import java.util.Properties;
 @Configuration
 public class MailConfig {
 
+    @Value("${spring.mail.password}")
+    private String appPassword;
+
     @Bean
     public JavaMailSender javaMailSender() {
         JavaMailSenderImpl mailSender = new JavaMailSenderImpl();
@@ -17,7 +21,7 @@ public class MailConfig {
         mailSender.setPort(587);
 
         mailSender.setUsername("pikulighosh1977@gmail.com");
-        mailSender.setPassword("vbxwlprjbenajtbq");
+        mailSender.setPassword(appPassword);
 
         Properties props = mailSender.getJavaMailProperties();
         props.put("mail.transport.protocol", "smtp");
