@@ -6,88 +6,134 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import org.openqa.selenium.*;
+import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.chrome.ChromeOptions;
+import org.openqa.selenium.support.ui.WebDriverWait;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Service;
-import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.web.reactive.function.client.WebClientRequestException;
-import org.springframework.web.reactive.function.client.WebClientResponseException;
-import reactor.core.publisher.Mono;
-import reactor.util.retry.Retry;
 
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Base64;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 
 @Service
-public class WebScraperTools {
+public class SeleniumWebScraperTools {
 
-    private static final Logger logger = LoggerFactory.getLogger(WebScraperTools.class);
+    private static final Logger logger = LoggerFactory.getLogger(SeleniumWebScraperTools.class);
 
-    // HTTP Configuration
-    private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(15);
-    private static final int MAX_MEMORY_SIZE = 8192 * 8192;
-    private static final int MAX_RETRY_ATTEMPTS = 3;
-    private static final Duration RETRY_DELAY = Duration.ofSeconds(1);
+    // Browser Configuration
+    private static final int VIEWPORT_WIDTH = 1920;
+    private static final int VIEWPORT_HEIGHT = 1080;
+    private static final boolean HEADLESS_MODE = true;
+
+    // Timeout Configuration
+    private static final Duration PAGE_LOAD_TIMEOUT = Duration.ofSeconds(30);
+    private static final Duration IMPLICIT_WAIT_TIMEOUT = Duration.ofSeconds(10);
+    private static final Duration EXPLICIT_WAIT_TIMEOUT = Duration.ofSeconds(15);
+    private static final int DYNAMIC_CONTENT_WAIT_MS = 2000;
 
     // Content Configuration
     private static final int MAX_CONTENT_LENGTH = 2000;
-    private static final int MAX_STRUCTURED_ELEMENTS = 10;
-    private static final int ELEMENT_PREVIEW_LENGTH = 100;
+    private static final int MAX_STRUCTURED_ELEMENTS = 20;
+    private static final int ELEMENT_TEXT_PREVIEW_LENGTH = 200;
     private static final int CONTENT_TRUNCATE_THRESHOLD = 1800;
-    private static final int HASH_PREVIEW_LENGTH = 8;
-
-    // URL Validation
-    private static final int MAX_URL_LENGTH = 2048;
+    private static final int MAX_TABLE_PREVIEW_ROWS = 3;
+    private static final int MAX_HEADING_PREVIEW = 5;
 
     // CSS Selectors
-    private static final String MAIN_CONTENT_SELECTORS = "main, article, .content, .post, .entry";
-    private static final String REMOVE_ELEMENTS_SELECTOR = "script, style, nav, header, footer, aside";
-    private static final String META_DESCRIPTION_SELECTOR = "meta[name=description]";
-    private static final String AUTHOR_SELECTORS = "meta[name=author], .author, .byline";
-    private static final String DATE_SELECTORS = "time, .date, .published, meta[property='article:published_time']";
+    private static final String[] CONTENT_SELECTORS = {
+            "main", "article", ".content", ".post", ".entry",
+            ".main-content", "#main", "#content", ".post-content",
+            ".entry-content", ".article-content"
+    };
+
+    private static final String REMOVE_ELEMENTS_SELECTOR =
+            "script, style, nav, header, footer, aside, .advertisement, .ads";
+
+    private static final String META_DESCRIPTION_SELECTOR =
+            "meta[name=description], meta[property='og:description']";
+
+    private static final String AUTHOR_SELECTOR =
+            "meta[name=author], .author, .byline, meta[property='article:author']";
+
+    private static final String DATE_SELECTOR =
+            "time, .date, .published, meta[property='article:published_time']";
 
     // Structured data selectors
     private static final String TABLE_SELECTOR = "table";
     private static final String LIST_SELECTOR = "ul, ol";
     private static final String LINK_SELECTOR = "a[href]";
     private static final String IMAGE_SELECTOR = "img[src]";
+    private static final String HEADING_SELECTOR = "h1, h2, h3, h4, h5, h6";
 
-    // HTTP Headers
-    private static final String USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
-    private static final String ACCEPT_HEADER = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8";
+    // User Agents Pool
+    private static final List<String> USER_AGENTS = List.of(
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36",
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.101 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:109.0) Gecko/20100101 Firefox/115.0"
+    );
+
+    // Chrome Options
+    private static final List<String> CHROME_ARGS = List.of(
+            "--disable-gpu",
+            "--window-size=" + VIEWPORT_WIDTH + "," + VIEWPORT_HEIGHT,
+            "--blink-settings=imagesEnabled=false",
+            "--disable-dev-shm-usage",
+            "--no-sandbox",
+            "--disable-extensions",
+            "--disable-logging",
+            "--disable-notifications",
+            "--disable-popup-blocking",
+            "--disable-translate",
+            "--disable-features=VizDisplayCompositor",
+            "--disable-blink-features=AutomationControlled"
+    );
+
+    private static final List<String> EXCLUDE_SWITCHES = List.of("enable-automation");
+
+    // Stealth Scripts
+    private static final String[] STEALTH_SCRIPTS = {
+            "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})",
+            "Object.defineProperty(navigator, 'plugins', {get: () => Array.from({length: 5}, () => ({}))})",
+            "Object.defineProperty(navigator, 'languages', {get: () => ['en-US', 'en']})",
+            "window.chrome = {runtime: {}, loadTimes: () => ({}), csi: () => ({})}"
+    };
 
     // Instance variables
-    private WebClient webClient;
+    private final SecureRandom random = new SecureRandom();
     private final AtomicLong scrapeCount = new AtomicLong(0);
 
     @PostConstruct
     public void initialize() {
-        logger.info("Initializing Web Scraper Tools service");
-        webClient = WebClient.builder()
-                .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(MAX_MEMORY_SIZE))
-                .defaultHeader("User-Agent", USER_AGENT)
-                .defaultHeader("Accept", ACCEPT_HEADER)
-                .build();
-        logger.info("Web Scraper Tools service initialized successfully");
+        logger.info("Initializing Selenium web scraper tool");
+        // Initialization logic if needed (e.g., driver pool setup)
+        logger.info("Selenium web scraper tool initialized successfully");
     }
 
     @PreDestroy
     public void cleanup() {
-        logger.info("Shutting down Web Scraper Tools service");
-        logger.info("Web Scraper Tools cleaned up successfully. Total scrapes: {}", scrapeCount.get());
+        logger.info("Shutting down Selenium web scraper tool");
+        // Cleanup logic if needed
+        logger.info("Selenium web scraper cleaned up successfully. Total scrapes: {}", scrapeCount.get());
     }
 
     @Tool(name = "scrape_webpage",
-            description = "Scrapes and extracts content from any webpage URL using HTTP requests. " +
+            description = "Scrapes and extracts content from any webpage URL using Selenium browser automation. " +
                     "Returns clean text content, title, and key metadata information.")
     public String scrape_webpage(@ToolParam(description = "Full http/https URL to scrape") String url) {
         long scrapeId = scrapeCount.incrementAndGet();
@@ -113,7 +159,7 @@ public class WebScraperTools {
             return "❌ " + e.getMessage();
         } catch (Exception e) {
             logger.error("Unexpected error during webpage scrape #{}", scrapeId, e);
-            return String.format("❌ Failed to scrape webpage: %s", e.getMessage());
+            return "❌ An unexpected error occurred while scraping the webpage.";
         }
     }
 
@@ -147,7 +193,7 @@ public class WebScraperTools {
             return "❌ " + e.getMessage();
         } catch (Exception e) {
             logger.error("Unexpected error during structured data extraction #{}", scrapeId, e);
-            return "❌ Failed to extract structured data from webpage.";
+            return "❌ An unexpected error occurred while extracting structured data.";
         }
     }
 
@@ -166,8 +212,8 @@ public class WebScraperTools {
         }
 
         try {
-            String currentContent = scrape_webpage(validation.getCleanUrl());
-            String contentHash = generateContentHash(currentContent);
+            String content = scrape_webpage(validation.getCleanUrl());
+            String contentHash = generateContentHash(content);
             String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
 
             logger.info("Webpage monitoring #{} completed for domain: {}", scrapeId, extractDomain(validation.getCleanUrl()));
@@ -183,47 +229,120 @@ public class WebScraperTools {
                 💡 **Usage:** Store this hash to compare against future checks for change detection.
                 📋 **Tip:** Run this tool periodically and compare hashes to detect content changes.
                 """, validation.getCleanUrl(), extractDomain(validation.getCleanUrl()),
-                    contentHash.substring(0, HASH_PREVIEW_LENGTH), timestamp);
+                    contentHash.substring(0, 16), timestamp);
 
         } catch (Exception e) {
             logger.error("Webpage monitoring #{} failed: {}", scrapeId, e.getMessage());
-            return "❌ Failed to monitor webpage changes.";
+            return "❌ Failed to monitor webpage changes: " + e.getMessage();
         }
     }
 
     private String fetchPageContent(String url, long scrapeId) throws ScrapingException {
+        WebDriver driver = null;
         try {
-            logger.debug("Fetching content for scrape #{}: {}", scrapeId, url);
+            ChromeOptions options = createChromeOptions();
+            driver = new ChromeDriver(options);
 
-            String html = webClient.get()
-                    .uri(url)
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .timeout(REQUEST_TIMEOUT)
-                    .retryWhen(Retry.fixedDelay(MAX_RETRY_ATTEMPTS, RETRY_DELAY)
-                            .filter(throwable -> throwable instanceof WebClientRequestException))
-                    .onErrorResume(WebClientResponseException.class, ex -> {
-                        if (ex.getStatusCode().is4xxClientError()) {
-                            return Mono.error(new ScrapingException("Access denied or page not found: HTTP " + ex.getStatusCode().value()));
-                        }
-                        return Mono.error(new ScrapingException("Server error: HTTP " + ex.getStatusCode().value()));
-                    })
-                    .block();
+            configureTimeouts(driver);
 
-            if (html == null || html.trim().isEmpty()) {
-                throw new ScrapingException("Received empty response from the webpage.");
-            }
+            logger.debug("Navigating to URL for scrape #{}: {}", scrapeId, url);
+            driver.get(url);
 
-            logger.debug("Successfully fetched content for scrape #{}, length: {} characters", scrapeId, html.length());
-            return html;
+            // Optional cookie addition (non-critical)
+            addSessionCookie(driver, scrapeId);
 
-        } catch (WebClientRequestException e) {
-            throw new ScrapingException("Network error while fetching webpage: " + e.getMessage());
+            // Apply stealth techniques
+            applyStealthTechniques(driver, scrapeId);
+
+            // Wait for page to be fully loaded
+            waitForPageLoad(driver, scrapeId);
+
+            // Additional wait for dynamic content
+            Thread.sleep(DYNAMIC_CONTENT_WAIT_MS);
+
+            String pageSource = driver.getPageSource();
+            logger.debug("Successfully fetched page source for scrape #{}, length: {}", scrapeId, pageSource.length());
+
+            return pageSource;
+
+        } catch (TimeoutException e) {
+            throw new ScrapingException("Page load timeout: " + e.getMessage());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new ScrapingException("Scraping interrupted: " + e.getMessage());
         } catch (Exception e) {
-            if (e instanceof ScrapingException) {
-                throw e;
+            throw new ScrapingException("Failed to fetch page content: " + e.getMessage());
+        } finally {
+            if (driver != null) {
+                try {
+                    driver.quit();
+                } catch (Exception e) {
+                    logger.warn("Error closing driver for scrape #{}: {}", scrapeId, e.getMessage());
+                }
             }
-            throw new ScrapingException("Failed to fetch webpage content: " + e.getMessage());
+        }
+    }
+
+    private ChromeOptions createChromeOptions() {
+        ChromeOptions options = new ChromeOptions();
+
+        // Add headless mode
+        if (HEADLESS_MODE) {
+            options.addArguments("--headless=new");
+        }
+
+        // Add all arguments
+        for (String arg : CHROME_ARGS) {
+            options.addArguments(arg);
+        }
+
+        // Add random user agent
+        String userAgent = getRandomUserAgent();
+        options.addArguments("--user-agent=" + userAgent);
+
+        // Experimental options
+        options.setExperimentalOption("useAutomationExtension", false);
+        options.setExperimentalOption("excludeSwitches", EXCLUDE_SWITCHES);
+
+        return options;
+    }
+
+    private void configureTimeouts(WebDriver driver) {
+        driver.manage().timeouts().pageLoadTimeout(PAGE_LOAD_TIMEOUT);
+        driver.manage().timeouts().implicitlyWait(IMPLICIT_WAIT_TIMEOUT);
+    }
+
+    private void addSessionCookie(WebDriver driver, long scrapeId) {
+        try {
+            Cookie sessionCookie = new Cookie("session-id", "scraper-session-" + System.currentTimeMillis());
+            driver.manage().addCookie(sessionCookie);
+            logger.debug("Session cookie added for scrape #{}", scrapeId);
+        } catch (Exception e) {
+            logger.debug("Could not add session cookie for scrape #{} (normal): {}", scrapeId, e.getMessage());
+        }
+    }
+
+    private void applyStealthTechniques(WebDriver driver, long scrapeId) {
+        try {
+            JavascriptExecutor js = (JavascriptExecutor) driver;
+            for (String script : STEALTH_SCRIPTS) {
+                js.executeScript(script);
+            }
+            logger.debug("Stealth techniques applied for scrape #{}", scrapeId);
+        } catch (Exception e) {
+            logger.debug("Could not apply stealth techniques for scrape #{}: {}", scrapeId, e.getMessage());
+        }
+    }
+
+    private void waitForPageLoad(WebDriver driver, long scrapeId) {
+        try {
+            WebDriverWait wait = new WebDriverWait(driver, EXPLICIT_WAIT_TIMEOUT);
+            wait.until(webDriver -> ((JavascriptExecutor) webDriver)
+                    .executeScript("return document.readyState").equals("complete"));
+            logger.debug("Page fully loaded for scrape #{}", scrapeId);
+        } catch (TimeoutException e) {
+            logger.warn("Page load wait timeout for scrape #{}: {}", scrapeId, e.getMessage());
+            // Continue anyway - partial content may still be useful
         }
     }
 
@@ -232,13 +351,8 @@ public class WebScraperTools {
             return UrlValidationResult.invalid("URL cannot be empty.");
         }
 
-        String trimmedUrl = url.trim();
-        if (trimmedUrl.length() > MAX_URL_LENGTH) {
-            return UrlValidationResult.invalid("URL is too long (maximum " + MAX_URL_LENGTH + " characters).");
-        }
-
         try {
-            URL parsedUrl = new URL(trimmedUrl);
+            URL parsedUrl = new URL(url.trim());
             String protocol = parsedUrl.getProtocol().toLowerCase();
 
             if (!"http".equals(protocol) && !"https".equals(protocol)) {
@@ -249,11 +363,15 @@ public class WebScraperTools {
                 return UrlValidationResult.invalid("URL must have a valid host.");
             }
 
-            return UrlValidationResult.valid(trimmedUrl);
+            return UrlValidationResult.valid(url.trim());
 
         } catch (MalformedURLException e) {
             return UrlValidationResult.invalid("Invalid URL format: " + e.getMessage());
         }
+    }
+
+    private String getRandomUserAgent() {
+        return USER_AGENTS.get(random.nextInt(USER_AGENTS.size()));
     }
 
     private String parseWebpageContent(String html, String url) throws ScrapingException {
@@ -285,13 +403,16 @@ public class WebScraperTools {
         doc.select(REMOVE_ELEMENTS_SELECTOR).remove();
 
         // Try to find main content area
-        Element mainContent = doc.selectFirst(MAIN_CONTENT_SELECTORS);
-        if (mainContent != null) {
-            return mainContent.text();
+        for (String selector : CONTENT_SELECTORS) {
+            Element mainContent = doc.selectFirst(selector);
+            if (mainContent != null && !mainContent.text().trim().isEmpty()) {
+                return mainContent.text();
+            }
         }
 
         // Fallback to body content
-        return doc.body().text();
+        Element body = doc.body();
+        return body != null ? body.text() : "No content found";
     }
 
     private String formatWebpageResult(WebpageMetadata metadata, String content) {
@@ -353,8 +474,8 @@ public class WebScraperTools {
             String elementText = element.text().trim();
             if (!elementText.isEmpty()) {
                 result.append(String.format("**%d.** %s\n", count + 1,
-                        elementText.length() > ELEMENT_PREVIEW_LENGTH ?
-                                elementText.substring(0, ELEMENT_PREVIEW_LENGTH) + "..." :
+                        elementText.length() > ELEMENT_TEXT_PREVIEW_LENGTH ?
+                                elementText.substring(0, ELEMENT_TEXT_PREVIEW_LENGTH) + "..." :
                                 elementText));
                 count++;
             }
@@ -367,22 +488,62 @@ public class WebScraperTools {
         StringBuilder result = new StringBuilder();
         result.append(String.format("📊 **Structured Data from %s**\n\n", extractDomain(url)));
 
-        // Count different types of structured elements
-        int tables = doc.select(TABLE_SELECTOR).size();
-        int lists = doc.select(LIST_SELECTOR).size();
-        int links = doc.select(LINK_SELECTOR).size();
-        int images = doc.select(IMAGE_SELECTOR).size();
+        // Extract and analyze tables
+        Elements tables = doc.select(TABLE_SELECTOR);
+        if (!tables.isEmpty()) {
+            result.append(String.format("📋 **Tables:** %d found\n", tables.size()));
+            appendTablePreview(result, tables);
+        }
 
-        if (tables > 0) result.append(String.format("📋 **Tables:** %d found\n", tables));
-        if (lists > 0) result.append(String.format("📝 **Lists:** %d found\n", lists));
-        if (links > 0) result.append(String.format("🔗 **Links:** %d found\n", links));
-        if (images > 0) result.append(String.format("🖼️ **Images:** %d found\n", images));
+        // Extract lists
+        Elements lists = doc.select(LIST_SELECTOR);
+        if (!lists.isEmpty()) {
+            result.append(String.format("📝 **Lists:** %d found\n", lists.size()));
+        }
 
-        if (tables == 0 && lists == 0 && links == 0 && images == 0) {
-            result.append("ℹ️ No common structured data elements found.\n");
+        // Extract links
+        Elements links = doc.select(LINK_SELECTOR);
+        if (!links.isEmpty()) {
+            result.append(String.format("🔗 **Links:** %d found\n", links.size()));
+        }
+
+        // Extract images
+        Elements images = doc.select(IMAGE_SELECTOR);
+        if (!images.isEmpty()) {
+            result.append(String.format("🖼️ **Images:** %d found\n", images.size()));
+        }
+
+        // Extract headings with preview
+        Elements headings = doc.select(HEADING_SELECTOR);
+        if (!headings.isEmpty()) {
+            result.append(String.format("📑 **Headings:** %d found\n", headings.size()));
+            appendHeadingPreview(result, headings);
         }
 
         return result.toString();
+    }
+
+    private void appendTablePreview(StringBuilder result, Elements tables) {
+        if (!tables.isEmpty()) {
+            Element firstTable = tables.first();
+            Elements rows = firstTable.select("tr");
+            if (!rows.isEmpty()) {
+                result.append("   First table preview:\n");
+                for (int i = 0; i < Math.min(MAX_TABLE_PREVIEW_ROWS, rows.size()); i++) {
+                    String rowText = rows.get(i).text();
+                    result.append("   ").append(rowText.length() > 100 ? rowText.substring(0, 100) + "..." : rowText).append("\n");
+                }
+            }
+        }
+    }
+
+    private void appendHeadingPreview(StringBuilder result, Elements headings) {
+        result.append("   Preview:\n");
+        for (int i = 0; i < Math.min(MAX_HEADING_PREVIEW, headings.size()); i++) {
+            Element heading = headings.get(i);
+            result.append("   ").append(heading.tagName().toUpperCase())
+                    .append(": ").append(heading.text()).append("\n");
+        }
     }
 
     // Utility methods
@@ -400,13 +561,22 @@ public class WebScraperTools {
     }
 
     private static String extractAuthor(Document doc) {
-        Element author = doc.selectFirst(AUTHOR_SELECTORS);
-        return author != null ? author.text() : "";
+        Element author = doc.selectFirst(AUTHOR_SELECTOR);
+        if (author != null) {
+            if (author.hasAttr("content")) return author.attr("content");
+            if (author.hasText()) return author.text();
+        }
+        return "";
     }
 
     private static String extractPublishDate(Document doc) {
-        Element date = doc.selectFirst(DATE_SELECTORS);
-        return date != null ? date.text() : "";
+        Element date = doc.selectFirst(DATE_SELECTOR);
+        if (date != null) {
+            if (date.hasAttr("datetime")) return date.attr("datetime");
+            if (date.hasAttr("content")) return date.attr("content");
+            if (date.hasText()) return date.text();
+        }
+        return "";
     }
 
     private static String truncateContent(String content, int maxLength) {
@@ -432,7 +602,7 @@ public class WebScraperTools {
             byte[] hash = md.digest(content.getBytes(StandardCharsets.UTF_8));
             return Base64.getEncoder().encodeToString(hash);
         } catch (Exception e) {
-            return "hash-generation-failed";
+            return "hash-error-" + System.currentTimeMillis();
         }
     }
 
@@ -484,5 +654,6 @@ public class WebScraperTools {
         }
     }
 }
+
 
 

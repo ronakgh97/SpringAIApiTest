@@ -4,29 +4,20 @@ import com.AI4Java.BackendAI.entries.SessionEntries;
 import com.AI4Java.BackendAI.repository.SessionRepo;
 import com.AI4Java.BackendAI.services.SessionServices;
 import org.bson.types.ObjectId;
-import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.*;
-import org.springframework.ai.chat.model.ChatModel;
-import org.springframework.ai.chat.model.ChatResponse;
-import org.springframework.ai.chat.model.StreamingChatModel;
 import org.springframework.ai.chat.prompt.Prompt;
-import org.springframework.ai.chat.prompt.PromptTemplate;
-import org.springframework.ai.chat.prompt.SystemPromptTemplate;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.access.method.P;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
-public class AiClient {
+public class AiClient_Removal {
 
     private final OpenAiChatModel chatModel;
     private final SessionRepo sessionRepo;
@@ -34,7 +25,7 @@ public class AiClient {
     private final ChatMemory chatMemory; // Custom embedded memory
 
     @Autowired
-    public AiClient(OpenAiChatModel chatModel, SessionRepo sessionRepo, SessionServices sessionServices, ChatMemory chatMemory) {
+    public AiClient_Removal(OpenAiChatModel chatModel, SessionRepo sessionRepo, SessionServices sessionServices, ChatMemory chatMemory) {
         this.chatModel = chatModel;
         this.sessionRepo = sessionRepo;
         this.sessionServices = sessionServices;

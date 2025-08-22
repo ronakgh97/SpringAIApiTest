@@ -24,7 +24,7 @@ public class CreateUserWithOneSessionMessage {
     @Test
     void createUser() throws Exception {
         // 1. Register a new user
-        String userRegistrationDto = "{\"userName\":\"ronak777\", \"password\":\"123456\", \"gmail\":\"ronakgh97@gmail.com\"}";
+        String userRegistrationDto = "{\"userName\":\"ronak777\", \"password\":\"123456\", \"gmail\":\"pikulighosh1977@gmail.com\"}";
         mockMvc.perform(post("/api/v1/users/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(userRegistrationDto))
@@ -47,7 +47,7 @@ public class CreateUserWithOneSessionMessage {
 
     void createSession(String token) throws Exception {
         // 3. Create a new chat session
-        String sessionCreateDto = "{\"nameSession\":\"Session testing\", \"model\":\"google/gemma-3-4b\"}";
+        String sessionCreateDto = "{\"nameSession\":\"Session testing\", \"model\":\"qwen/qwen3-4b-thinking-2507\"}";
         MvcResult sessionResult = mockMvc.perform(post("/api/v1/sessions/create")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -63,7 +63,7 @@ public class CreateUserWithOneSessionMessage {
     }
 
     void sendMessage(String token, String sessionId) throws Exception {
-        String chatRequest = "{\"prompt\":\"Hello Hashimoto!!, Can you send me a mail of recent news on trump and putin visit alaska summit?\"}";
+        String chatRequest = "{\"prompt\":\"Hello Hashimoto!!, Can you mail me the current weather report of Malda?\"}";
         mockMvc.perform(post("/api/v1/chat/" + sessionId)
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -71,7 +71,7 @@ public class CreateUserWithOneSessionMessage {
                 .andExpect(status().isOk())
                 .andReturn();
 
-        Thread.sleep(100000); //For to save the sendMessage
+        Thread.sleep(220000); //Slow PC
 
     }
 

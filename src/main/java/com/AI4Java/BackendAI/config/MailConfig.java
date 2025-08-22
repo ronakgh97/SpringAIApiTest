@@ -20,7 +20,7 @@ public class MailConfig {
         mailSender.setHost("smtp.gmail.com");
         mailSender.setPort(587);
 
-        mailSender.setUsername("pikulighosh1977@gmail.com");
+        mailSender.setUsername("ai.agentic.mail.service@gmail.com");
         mailSender.setPassword(appPassword);
 
         Properties props = mailSender.getJavaMailProperties();

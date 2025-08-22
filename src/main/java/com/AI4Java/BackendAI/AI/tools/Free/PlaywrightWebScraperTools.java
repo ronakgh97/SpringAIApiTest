@@ -1,5 +1,8 @@
 package com.AI4Java.BackendAI.AI.tools.Free;
 
+import com.microsoft.playwright.*;
+import com.microsoft.playwright.options.LoadState;
+import com.microsoft.playwright.options.WaitUntilState;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.jsoup.Jsoup;
@@ -11,46 +14,43 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Service;
-import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.web.reactive.function.client.WebClientRequestException;
-import org.springframework.web.reactive.function.client.WebClientResponseException;
-import reactor.core.publisher.Mono;
-import reactor.util.retry.Retry;
 
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
-import java.time.Duration;
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Base64;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 
 @Service
-public class WebScraperTools {
+public class PlaywrightWebScraperTools {
 
-    private static final Logger logger = LoggerFactory.getLogger(WebScraperTools.class);
+    private static final Logger logger = LoggerFactory.getLogger(PlaywrightWebScraperTools.class);
 
-    // HTTP Configuration
-    private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(15);
-    private static final int MAX_MEMORY_SIZE = 8192 * 8192;
-    private static final int MAX_RETRY_ATTEMPTS = 3;
-    private static final Duration RETRY_DELAY = Duration.ofSeconds(1);
+    // Browser Configuration
+    private static final int VIEWPORT_WIDTH = 1920;
+    private static final int VIEWPORT_HEIGHT = 1080;
+    private static final boolean BROWSER_HEADLESS = true;
+
+    // Timeout Configuration
+    private static final int DEFAULT_TIMEOUT_MS = 30000;
+    private static final int NAVIGATION_TIMEOUT_MS = 30000;
+    private static final int NETWORK_IDLE_TIMEOUT_MS = 15000;
+    private static final int ADDITIONAL_WAIT_MS = 2000;
+    private static final int RETRY_DELAY_BASE_MS = 2000;
 
     // Content Configuration
-    private static final int MAX_CONTENT_LENGTH = 2000;
+    private static final int MAX_CONTENT_LENGTH = 1500;
     private static final int MAX_STRUCTURED_ELEMENTS = 10;
-    private static final int ELEMENT_PREVIEW_LENGTH = 100;
-    private static final int CONTENT_TRUNCATE_THRESHOLD = 1800;
-    private static final int HASH_PREVIEW_LENGTH = 8;
-
-    // URL Validation
-    private static final int MAX_URL_LENGTH = 2048;
+    private static final int CONTENT_TRUNCATE_THRESHOLD = 1200;
+    private static final int MAX_RETRY_ATTEMPTS = 3;
 
     // CSS Selectors
     private static final String MAIN_CONTENT_SELECTORS = "main, article, .content, .post, .entry";
-    private static final String REMOVE_ELEMENTS_SELECTOR = "script, style, nav, header, footer, aside";
+    private static final String REMOVE_ELEMENTS_SELECTORS = "script, style, nav, header, footer, aside";
     private static final String META_DESCRIPTION_SELECTOR = "meta[name=description]";
     private static final String AUTHOR_SELECTORS = "meta[name=author], .author, .byline";
     private static final String DATE_SELECTORS = "time, .date, .published, meta[property='article:published_time']";
@@ -61,33 +61,105 @@ public class WebScraperTools {
     private static final String LINK_SELECTOR = "a[href]";
     private static final String IMAGE_SELECTOR = "img[src]";
 
+    // User agents pool
+    private static final List<String> USER_AGENTS = List.of(
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36",
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.101 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:109.0) Gecko/20100101 Firefox/115.0",
+            "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/115.0"
+    );
+
     // HTTP Headers
-    private static final String USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
-    private static final String ACCEPT_HEADER = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8";
+    private static final Map<String, String> DEFAULT_HEADERS = Map.of(
+            "Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+            "Accept-Language", "en-US,en;q=0.9",
+            "Accept-Encoding", "gzip, deflate, br",
+            "Cache-Control", "no-cache",
+            "Pragma", "no-cache"
+    );
+
+    // Browser launch arguments
+    private static final List<String> BROWSER_ARGS = List.of(
+            "--disable-gpu",
+            "--disable-images",
+            "--disable-web-security",
+            "--disable-features=VizDisplayCompositor",
+            "--no-sandbox",
+            "--disable-dev-shm-usage",
+            "--disable-blink-features=AutomationControlled"
+    );
+
+    // Stealth script
+    private static final String STEALTH_SCRIPT = """
+        () => {
+            // Remove webdriver property
+            Object.defineProperty(navigator, 'webdriver', {
+                get: () => undefined,
+            });
+            
+            // Mock chrome object  
+            window.chrome = {
+                runtime: {},
+                loadTimes: () => ({}),
+                csi: () => ({})
+            };
+            
+            // Mock plugins
+            Object.defineProperty(navigator, 'plugins', {
+                get: () => Array.from({length: 5}, () => ({}))
+            });
+            
+            // Mock languages
+            Object.defineProperty(navigator, 'languages', {
+                get: () => ['en-US', 'en']
+            });
+            
+            // Hide automation indicators
+            Object.defineProperty(navigator, 'permissions', {
+                get: () => ({
+                    query: () => Promise.resolve({ state: 'granted' })
+                })
+            });
+        }
+        """;
 
     // Instance variables
-    private WebClient webClient;
+    private Playwright playwright;
+    private Browser browser;
+    private final SecureRandom random = new SecureRandom();
     private final AtomicLong scrapeCount = new AtomicLong(0);
 
     @PostConstruct
     public void initialize() {
-        logger.info("Initializing Web Scraper Tools service");
-        webClient = WebClient.builder()
-                .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(MAX_MEMORY_SIZE))
-                .defaultHeader("User-Agent", USER_AGENT)
-                .defaultHeader("Accept", ACCEPT_HEADER)
-                .build();
-        logger.info("Web Scraper Tools service initialized successfully");
+        logger.info("Initializing Playwright web scraper tool");
+        try {
+            playwright = Playwright.create();
+            browser = createBrowser();
+            logger.info("Playwright web scraper initialized successfully");
+        } catch (Exception e) {
+            logger.error("Failed to initialize Playwright web scraper", e);
+            throw new ScraperInitializationException("Failed to initialize web scraper", e);
+        }
     }
 
     @PreDestroy
     public void cleanup() {
-        logger.info("Shutting down Web Scraper Tools service");
-        logger.info("Web Scraper Tools cleaned up successfully. Total scrapes: {}", scrapeCount.get());
+        logger.info("Shutting down Playwright web scraper tool");
+        try {
+            if (browser != null) browser.close();
+            if (playwright != null) playwright.close();
+            logger.info("Playwright web scraper cleaned up successfully. Total scrapes: {}", scrapeCount.get());
+        } catch (Exception e) {
+            logger.error("Error during web scraper cleanup", e);
+        }
     }
 
     @Tool(name = "scrape_webpage",
-            description = "Scrapes and extracts content from any webpage URL using HTTP requests. " +
+            description = "Scrapes and extracts content from any webpage URL using a headless browser. " +
                     "Returns clean text content, title, and key metadata information.")
     public String scrape_webpage(@ToolParam(description = "Full http/https URL to scrape") String url) {
         long scrapeId = scrapeCount.incrementAndGet();
@@ -101,11 +173,11 @@ public class WebScraperTools {
         }
 
         try {
-            String html = fetchPageContent(validation.getCleanUrl(), scrapeId);
-            String result = parseWebpageContent(html, validation.getCleanUrl());
+            String html = fetchPageContent(url, scrapeId);
+            String result = parseWebpageContent(html, url);
 
             logger.info("Webpage scrape #{} completed successfully for domain: {}",
-                    scrapeId, extractDomain(validation.getCleanUrl()));
+                    scrapeId, extractDomain(url));
             return result;
 
         } catch (ScrapingException e) {
@@ -113,7 +185,7 @@ public class WebScraperTools {
             return "❌ " + e.getMessage();
         } catch (Exception e) {
             logger.error("Unexpected error during webpage scrape #{}", scrapeId, e);
-            return String.format("❌ Failed to scrape webpage: %s", e.getMessage());
+            return "❌ An unexpected error occurred while scraping the webpage.";
         }
     }
 
@@ -136,8 +208,8 @@ public class WebScraperTools {
         }
 
         try {
-            String html = fetchPageContent(validation.getCleanUrl(), scrapeId);
-            String result = extractStructuredData(html, selector, validation.getCleanUrl());
+            String html = fetchPageContent(url, scrapeId);
+            String result = extractStructuredData(html, selector, url);
 
             logger.info("Structured data extraction #{} completed successfully", scrapeId);
             return result;
@@ -147,13 +219,13 @@ public class WebScraperTools {
             return "❌ " + e.getMessage();
         } catch (Exception e) {
             logger.error("Unexpected error during structured data extraction #{}", scrapeId, e);
-            return "❌ Failed to extract structured data from webpage.";
+            return "❌ An unexpected error occurred while extracting structured data.";
         }
     }
 
     @Tool(name = "monitor_webpage_changes",
-            description = "Generates a content hash for webpage monitoring. " +
-                    "Useful for detecting changes by comparing hashes over time.")
+            description = "Checks if a webpage has changed by generating a content hash. " +
+                    "Useful for monitoring websites for updates or changes.")
     public String monitor_webpage_changes(@ToolParam(description = "Full http/https URL to monitor") String url) {
         long scrapeId = scrapeCount.incrementAndGet();
         logger.debug("Starting webpage monitoring #{} for URL: {}", scrapeId, url);
@@ -166,11 +238,11 @@ public class WebScraperTools {
         }
 
         try {
-            String currentContent = scrape_webpage(validation.getCleanUrl());
-            String contentHash = generateContentHash(currentContent);
+            String content = scrape_webpage(url);
+            String contentHash = generateContentHash(content);
             String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
 
-            logger.info("Webpage monitoring #{} completed for domain: {}", scrapeId, extractDomain(validation.getCleanUrl()));
+            logger.info("Webpage monitoring #{} completed for domain: {}", scrapeId, extractDomain(url));
 
             return String.format("""
                 📊 **Webpage Monitoring Report**
@@ -180,51 +252,97 @@ public class WebScraperTools {
                 🔍 **Content Hash:** %s
                 📅 **Timestamp:** %s
                 
-                💡 **Usage:** Store this hash to compare against future checks for change detection.
-                📋 **Tip:** Run this tool periodically and compare hashes to detect content changes.
-                """, validation.getCleanUrl(), extractDomain(validation.getCleanUrl()),
-                    contentHash.substring(0, HASH_PREVIEW_LENGTH), timestamp);
+                💡 **Note:** Store this hash to compare against future checks for change detection.
+                """, url, extractDomain(url), contentHash.substring(0, 16), timestamp);
 
         } catch (Exception e) {
             logger.error("Webpage monitoring #{} failed: {}", scrapeId, e.getMessage());
-            return "❌ Failed to monitor webpage changes.";
+            return "❌ Failed to monitor webpage changes: " + e.getMessage();
+        }
+    }
+
+    private Browser createBrowser() throws ScraperInitializationException {
+        try {
+            BrowserType.LaunchOptions launchOptions = new BrowserType.LaunchOptions()
+                    .setHeadless(BROWSER_HEADLESS)
+                    .setArgs(BROWSER_ARGS);
+
+            return playwright.chromium().launch(launchOptions);
+        } catch (Exception e) {
+            throw new ScraperInitializationException("Failed to create browser", e);
         }
     }
 
     private String fetchPageContent(String url, long scrapeId) throws ScrapingException {
+        BrowserContext context = null;
         try {
-            logger.debug("Fetching content for scrape #{}: {}", scrapeId, url);
+            String userAgent = getRandomUserAgent();
 
-            String html = webClient.get()
-                    .uri(url)
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .timeout(REQUEST_TIMEOUT)
-                    .retryWhen(Retry.fixedDelay(MAX_RETRY_ATTEMPTS, RETRY_DELAY)
-                            .filter(throwable -> throwable instanceof WebClientRequestException))
-                    .onErrorResume(WebClientResponseException.class, ex -> {
-                        if (ex.getStatusCode().is4xxClientError()) {
-                            return Mono.error(new ScrapingException("Access denied or page not found: HTTP " + ex.getStatusCode().value()));
-                        }
-                        return Mono.error(new ScrapingException("Server error: HTTP " + ex.getStatusCode().value()));
-                    })
-                    .block();
+            context = browser.newContext(new Browser.NewContextOptions()
+                    .setUserAgent(userAgent)
+                    .setViewportSize(VIEWPORT_WIDTH, VIEWPORT_HEIGHT)
+                    .setJavaScriptEnabled(true)
+                    .setExtraHTTPHeaders(DEFAULT_HEADERS)
+            );
 
-            if (html == null || html.trim().isEmpty()) {
-                throw new ScrapingException("Received empty response from the webpage.");
-            }
+            Page page = context.newPage();
+            configurePageStealth(page);
+            setPageTimeouts(page);
 
-            logger.debug("Successfully fetched content for scrape #{}, length: {} characters", scrapeId, html.length());
-            return html;
+            return fetchWithRetry(page, url, scrapeId);
 
-        } catch (WebClientRequestException e) {
-            throw new ScrapingException("Network error while fetching webpage: " + e.getMessage());
         } catch (Exception e) {
-            if (e instanceof ScrapingException) {
-                throw e;
+            throw new ScrapingException("Failed to fetch page content: " + e.getMessage(), e);
+        } finally {
+            if (context != null) {
+                try {
+                    context.close();
+                } catch (Exception e) {
+                    logger.warn("Error closing browser context for scrape #{}", scrapeId, e);
+                }
             }
-            throw new ScrapingException("Failed to fetch webpage content: " + e.getMessage());
         }
+    }
+
+    private String fetchWithRetry(Page page, String url, long scrapeId) throws ScrapingException {
+        for (int attempt = 1; attempt <= MAX_RETRY_ATTEMPTS; attempt++) {
+            try {
+                logger.debug("Attempt {} of {} for scrape #{}", attempt, MAX_RETRY_ATTEMPTS, scrapeId);
+
+                Response response = page.navigate(url, new Page.NavigateOptions()
+                        .setWaitUntil(WaitUntilState.DOMCONTENTLOADED)
+                        .setTimeout(NAVIGATION_TIMEOUT_MS));
+
+                if (response == null || !response.ok()) {
+                    throw new ScrapingException("Failed to load page: " +
+                            (response != null ? "HTTP " + response.status() : "No response"));
+                }
+
+                // Wait for network to be idle
+                page.waitForLoadState(LoadState.NETWORKIDLE,
+                        new Page.WaitForLoadStateOptions().setTimeout(NETWORK_IDLE_TIMEOUT_MS));
+
+                // Additional wait for dynamic content
+                page.waitForTimeout(ADDITIONAL_WAIT_MS);
+
+                return page.content();
+
+            } catch (Exception e) {
+                if (attempt == MAX_RETRY_ATTEMPTS) {
+                    throw new ScrapingException("Failed after " + MAX_RETRY_ATTEMPTS + " attempts: " + e.getMessage(), e);
+                }
+
+                logger.warn("Attempt {} failed for scrape #{}, retrying: {}", attempt, scrapeId, e.getMessage());
+                try {
+                    Thread.sleep(RETRY_DELAY_BASE_MS * attempt);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new ScrapingException("Scraping interrupted", ie);
+                }
+            }
+        }
+
+        throw new ScrapingException("Unexpected end of retry loop");
     }
 
     private UrlValidationResult validateUrl(String url) {
@@ -232,13 +350,8 @@ public class WebScraperTools {
             return UrlValidationResult.invalid("URL cannot be empty.");
         }
 
-        String trimmedUrl = url.trim();
-        if (trimmedUrl.length() > MAX_URL_LENGTH) {
-            return UrlValidationResult.invalid("URL is too long (maximum " + MAX_URL_LENGTH + " characters).");
-        }
-
         try {
-            URL parsedUrl = new URL(trimmedUrl);
+            URL parsedUrl = new URL(url.trim());
             String protocol = parsedUrl.getProtocol().toLowerCase();
 
             if (!"http".equals(protocol) && !"https".equals(protocol)) {
@@ -249,11 +362,24 @@ public class WebScraperTools {
                 return UrlValidationResult.invalid("URL must have a valid host.");
             }
 
-            return UrlValidationResult.valid(trimmedUrl);
+            return UrlValidationResult.valid(url.trim());
 
         } catch (MalformedURLException e) {
             return UrlValidationResult.invalid("Invalid URL format: " + e.getMessage());
         }
+    }
+
+    private String getRandomUserAgent() {
+        return USER_AGENTS.get(random.nextInt(USER_AGENTS.size()));
+    }
+
+    private void configurePageStealth(Page page) {
+        page.addInitScript(STEALTH_SCRIPT);
+    }
+
+    private void setPageTimeouts(Page page) {
+        page.setDefaultTimeout(DEFAULT_TIMEOUT_MS);
+        page.setDefaultNavigationTimeout(NAVIGATION_TIMEOUT_MS);
     }
 
     private String parseWebpageContent(String html, String url) throws ScrapingException {
@@ -266,7 +392,7 @@ public class WebScraperTools {
             return formatWebpageResult(metadata, mainContent);
 
         } catch (Exception e) {
-            throw new ScrapingException("Failed to parse webpage content: " + e.getMessage());
+            throw new ScrapingException("Failed to parse webpage content: " + e.getMessage(), e);
         }
     }
 
@@ -282,7 +408,7 @@ public class WebScraperTools {
 
     private String extractMainContent(Document doc) {
         // Remove unwanted elements
-        doc.select(REMOVE_ELEMENTS_SELECTOR).remove();
+        doc.select(REMOVE_ELEMENTS_SELECTORS).remove();
 
         // Try to find main content area
         Element mainContent = doc.selectFirst(MAIN_CONTENT_SELECTORS);
@@ -298,7 +424,7 @@ public class WebScraperTools {
         StringBuilder result = new StringBuilder();
         result.append("📄 **Webpage Content Extracted**\n\n");
         result.append("🌐 **Source:** ").append(metadata.domain).append("\n");
-        result.append("📝 **Title:** ").append(metadata.title.isEmpty() ? "No title found" : metadata.title).append("\n");
+        result.append("📝 **Title:** ").append(metadata.title).append("\n");
 
         if (!metadata.description.isEmpty()) {
             result.append("📋 **Description:** ").append(metadata.description).append("\n");
@@ -327,7 +453,7 @@ public class WebScraperTools {
             }
 
         } catch (Exception e) {
-            throw new ScrapingException("Failed to extract structured data: " + e.getMessage());
+            throw new ScrapingException("Failed to extract structured data: " + e.getMessage(), e);
         }
     }
 
@@ -345,17 +471,12 @@ public class WebScraperTools {
 
         int count = 0;
         for (Element element : elements) {
-            if (count >= MAX_STRUCTURED_ELEMENTS) {
-                result.append("... and ").append(elements.size() - count).append(" more elements\n");
-                break;
-            }
+            if (count >= MAX_STRUCTURED_ELEMENTS) break;
 
-            String elementText = element.text().trim();
-            if (!elementText.isEmpty()) {
+            String text = element.text();
+            if (!text.isEmpty()) {
                 result.append(String.format("**%d.** %s\n", count + 1,
-                        elementText.length() > ELEMENT_PREVIEW_LENGTH ?
-                                elementText.substring(0, ELEMENT_PREVIEW_LENGTH) + "..." :
-                                elementText));
+                        text.length() > 100 ? text.substring(0, 100) + "..." : text));
                 count++;
             }
         }
@@ -385,8 +506,7 @@ public class WebScraperTools {
         return result.toString();
     }
 
-    // Utility methods
-    private static String extractDomain(String url) {
+    private String extractDomain(String url) {
         try {
             return new URL(url).getHost();
         } catch (Exception e) {
@@ -394,27 +514,22 @@ public class WebScraperTools {
         }
     }
 
-    private static String extractMetaDescription(Document doc) {
+    private String extractMetaDescription(Document doc) {
         Element desc = doc.selectFirst(META_DESCRIPTION_SELECTOR);
         return desc != null ? desc.attr("content") : "";
     }
 
-    private static String extractAuthor(Document doc) {
+    private String extractAuthor(Document doc) {
         Element author = doc.selectFirst(AUTHOR_SELECTORS);
         return author != null ? author.text() : "";
     }
 
-    private static String extractPublishDate(Document doc) {
+    private String extractPublishDate(Document doc) {
         Element date = doc.selectFirst(DATE_SELECTORS);
-        return date != null ? date.text() : "";
+        return date != null ? (date.hasAttr("datetime") ? date.attr("datetime") : date.text()) : "";
     }
 
-    private static String truncateContent(String content, int maxLength) {
-        if (content == null || content.trim().isEmpty()) {
-            return "No content found";
-        }
-
-        content = content.trim();
+    private String truncateContent(String content, int maxLength) {
         if (content.length() <= maxLength) {
             return content;
         }
@@ -426,12 +541,13 @@ public class WebScraperTools {
         return content.substring(0, maxLength) + "...\n\n📄 [Content truncated - full text extracted]";
     }
 
-    private static String generateContentHash(String content) {
+    private String generateContentHash(String content) {
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-256");
             byte[] hash = md.digest(content.getBytes(StandardCharsets.UTF_8));
             return Base64.getEncoder().encodeToString(hash);
         } catch (Exception e) {
+            logger.warn("Failed to generate content hash", e);
             return "hash-generation-failed";
         }
     }
@@ -477,10 +593,20 @@ public class WebScraperTools {
         }
     }
 
-    // Custom exception
+    // Custom exceptions
+    private static class ScraperInitializationException extends RuntimeException {
+        ScraperInitializationException(String message, Throwable cause) {
+            super(message, cause);
+        }
+    }
+
     private static class ScrapingException extends Exception {
         ScrapingException(String message) {
             super(message);
+        }
+
+        ScrapingException(String message, Throwable cause) {
+            super(message, cause);
         }
     }
 }

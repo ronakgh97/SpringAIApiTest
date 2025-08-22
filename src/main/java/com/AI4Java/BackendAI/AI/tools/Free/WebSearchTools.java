@@ -1,150 +1,479 @@
 package com.AI4Java.BackendAI.AI.tools.Free;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientRequestException;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
+import reactor.util.retry.Retry;
+
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.concurrent.atomic.AtomicLong;
 
 @Service
 public class WebSearchTools {
 
-    private static final Logger log = LoggerFactory.getLogger(WebSearchTools.class);
+    private static final Logger logger = LoggerFactory.getLogger(WebSearchTools.class);
 
-    @Tool(name = "web_Search",
-            description = "Searches the web using DuckDuckGo for current information. " +
-                    "Use this when you need recent information, news, or facts not in your training data."+
-                    "Returns top results with title, link, and snippet. " +
-                    "Parameter: query - the search terms to look for."
-    )
-    public String webSearch(@ToolParam(description = "Search terms") String query) {
+    // API Configuration
+    private static final String DUCKDUCKGO_API_URL = "https://api.duckduckgo.com/";
+    private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(15);
+    private static final int MAX_MEMORY_SIZE = 8192 * 8192;
+    private static final int MAX_RETRY_ATTEMPTS = 3;
+    private static final Duration RETRY_DELAY = Duration.ofSeconds(1);
+
+    // Search Configuration
+    private static final int MAX_SEARCH_RESULTS = 10;
+    private static final int MAX_SNIPPET_LENGTH = 2000;
+    private static final int MAX_TITLE_LENGTH = 1200;
+    private static final int URL_DISPLAY_MAX_LENGTH = 100;
+    private static final int URL_PATH_MAX_LENGTH = 100;
+    private static final int URL_TRUNCATE_THRESHOLD = 1800;
+
+    // Query Validation
+    private static final int MIN_QUERY_LENGTH = 1;
+    private static final int MAX_QUERY_LENGTH = 500;
+
+    // HTTP Headers
+    private static final String USER_AGENT = "SpringAI-WebSearchTool/1.0";
+    private static final String API_IDENTIFIER = "&t=springAI";
+
+    // API Parameters
+    private static final String API_PARAMS = "?q=%s&format=json&no_html=1&skip_disambig=1" + API_IDENTIFIER;
+
+    // Instance variables
+    private WebClient webClient;
+    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final AtomicLong searchCount = new AtomicLong(0);
+
+    @PostConstruct
+    public void initialize() {
+        logger.info("Initializing Web Search Tools service");
+        webClient = WebClient.builder()
+                .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(MAX_MEMORY_SIZE))
+                .defaultHeader("User-Agent", USER_AGENT)
+                .build();
+        logger.info("Web Search Tools service initialized successfully");
+    }
+
+    @PreDestroy
+    public void cleanup() {
+        logger.info("Shutting down Web Search Tools service");
+        logger.info("Web Search Tools cleaned up successfully. Total searches: {}", searchCount.get());
+    }
+
+    @Tool(name = "web_search",
+            description = "Searches the web using DuckDuckGo API for current information and facts. " +
+                    "Returns instant answers when available plus related search results with titles and snippets. " +
+                    "Use this when you need recent information, news, or facts not in your training data.")
+    public String webSearch(@ToolParam(description = "Search terms or query") String query) {
+        long searchId = searchCount.incrementAndGet();
+        logger.debug("Starting web search #{} for query: '{}'", searchId, query);
+
+        // Validate input
+        SearchRequest request = validateSearchRequest(query);
+        if (!request.isValid()) {
+            logger.warn("Invalid search request #{}: {}", searchId, request.getErrorMessage());
+            return "❌ " + request.getErrorMessage();
+        }
+
         try {
-            log.info("Performing web search for query: {}", query);
+            String jsonResponse = performWebSearch(request.getQuery(), searchId);
+            SearchResult result = parseSearchResponse(jsonResponse, request.getQuery());
+            String formattedResult = formatSearchResult(result);
 
+            logger.info("Web search #{} completed successfully - {} results found",
+                    searchId, result.getResultCount());
+            return formattedResult;
+
+        } catch (WebSearchException e) {
+            logger.error("Web search #{} failed: {}", searchId, e.getMessage());
+            return "❌ " + e.getMessage();
+        } catch (Exception e) {
+            logger.error("Unexpected error during web search #{}", searchId, e);
+            return "❌ Failed to perform web search. Please try again with different keywords.";
+        }
+    }
+
+    private String performWebSearch(String query, long searchId) throws WebSearchException {
+        try {
             String encodedQuery = URLEncoder.encode(query, StandardCharsets.UTF_8);
-            String searchUrl = "https://html.duckduckgo.com/html/?q=" + encodedQuery;
+            String apiUrl = DUCKDUCKGO_API_URL + String.format(API_PARAMS, encodedQuery);
 
-            WebClient webClient = WebClient.builder()
-                    .defaultHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-                    .build();
+            logger.debug("Calling DuckDuckGo API for search #{}", searchId);
 
-            String htmlResponse = webClient.get()
-                    .uri(searchUrl)
+            String response = webClient.get()
+                    .uri(apiUrl)
                     .retrieve()
                     .bodyToMono(String.class)
-                    .timeout(Duration.ofSeconds(30))
+                    .timeout(REQUEST_TIMEOUT)
+                    .retryWhen(Retry.fixedDelay(MAX_RETRY_ATTEMPTS, RETRY_DELAY)
+                            .filter(throwable -> throwable instanceof WebClientRequestException))
                     .block();
 
-            log.info(htmlResponse);
+            if (response == null || response.trim().isEmpty()) {
+                throw new WebSearchException("Received empty response from search API.");
+            }
 
-            return parseHtmlResults(htmlResponse, query);
+            logger.debug("Successfully received response from DuckDuckGo API for search #{}", searchId);
+            return response;
 
+        } catch (WebClientRequestException e) {
+            throw new WebSearchException("Network error while searching: " + e.getMessage());
+        } catch (WebClientResponseException e) {
+            throw new WebSearchException("Search API error: HTTP " + e.getStatusCode());
         } catch (Exception e) {
-            log.error("Failed to perform web search for query '{}': {}", query, e.getMessage());
-            return "Failed to perform web search. Please try again.";
+            if (e instanceof WebSearchException) {
+                throw e;
+            }
+            throw new WebSearchException("Failed to perform web search: " + e.getMessage());
         }
     }
 
-    private String parseHtmlResults(String html, String originalQuery) {
-        StringBuilder results = new StringBuilder();
-        results.append("🔍 Search results for: ").append(originalQuery).append("\n\n");
+    private SearchRequest validateSearchRequest(String query) {
+        if (query == null || query.trim().isEmpty()) {
+            return SearchRequest.invalid("Search query cannot be empty.");
+        }
 
+        String trimmedQuery = query.trim();
+        if (trimmedQuery.length() < MIN_QUERY_LENGTH) {
+            return SearchRequest.invalid("Search query is too short.");
+        }
+        if (trimmedQuery.length() > MAX_QUERY_LENGTH) {
+            return SearchRequest.invalid("Search query is too long (maximum " + MAX_QUERY_LENGTH + " characters).");
+        }
+
+        return SearchRequest.valid(trimmedQuery);
+    }
+
+    private SearchResult parseSearchResponse(String jsonResponse, String originalQuery) throws WebSearchException {
         try {
-            org.jsoup.nodes.Document doc = org.jsoup.Jsoup.parse(html);
-            org.jsoup.select.Elements resultBlocks = doc.select("div.result");
+            JsonNode root = objectMapper.readTree(jsonResponse);
 
-            int count = 0;
-            for (org.jsoup.nodes.Element block : resultBlocks) {
-                if (count >= 8) break; // Reduced to 8 for better readability
+            // Extract instant answer
+            InstantAnswer instantAnswer = extractInstantAnswer(root);
 
-                org.jsoup.nodes.Element titleElement = block.selectFirst("a.result__a");
-                org.jsoup.nodes.Element snippetElement = block.selectFirst("a.result__snippet, div.result__snippet");
+            // Extract related topics (search results)
+            SearchResultList searchResults = extractSearchResults(root);
 
-                // Extract site name and additional metadata
-                org.jsoup.nodes.Element urlElement = block.selectFirst("a.result__url");
-                org.jsoup.nodes.Element dateElement = block.selectFirst(".result__timestamp");
+            return new SearchResult(originalQuery, instantAnswer, searchResults);
 
-                if (titleElement != null) {
-                    String title = titleElement.text();
-                    String link = titleElement.absUrl("href");
-                    String snippet = (snippetElement != null) ?
-                            truncateSnippet(snippetElement.text(), 150) : "No description available.";
+        } catch (Exception e) {
+            throw new WebSearchException("Failed to parse search results: " + e.getMessage());
+        }
+    }
 
-                    // Extract site name from URL or dedicated element
-                    String siteName = extractSiteName(link, urlElement);
-                    String publishDate = (dateElement != null) ? dateElement.text() : "";
+    private InstantAnswer extractInstantAnswer(JsonNode root) {
+        String abstractText = root.path("AbstractText").asText();
+        String abstractUrl = root.path("AbstractURL").asText();
+        String abstractSource = root.path("AbstractSource").asText();
 
-                    // Better formatting
-                    results.append("**").append(count + 1).append(". ").append(title).append("**\n");
-                    results.append("📝 ").append(snippet).append("\n");
-                    results.append("🌐 Source: ").append(siteName);
+        if (!abstractText.isEmpty()) {
+            return new InstantAnswer(abstractText, abstractUrl, abstractSource);
+        }
+        return null;
+    }
 
-                    if (!publishDate.isEmpty()) {
-                        results.append(" • ").append(publishDate);
+    private SearchResultList extractSearchResults(JsonNode root) {
+        SearchResultList results = new SearchResultList();
+        JsonNode relatedTopics = root.path("RelatedTopics");
+
+        if (!relatedTopics.isArray()) {
+            return results;
+        }
+
+        for (JsonNode topic : relatedTopics) {
+            if (results.size() >= MAX_SEARCH_RESULTS) break;
+
+            // Handle nested topics
+            JsonNode topicsArray = topic.path("Topics");
+            if (topicsArray.isArray() && topicsArray.size() > 0) {
+                for (JsonNode nestedTopic : topicsArray) {
+                    if (results.size() >= MAX_SEARCH_RESULTS) break;
+                    SearchResultItem item = createSearchResultItem(nestedTopic);
+                    if (item != null) {
+                        results.add(item);
                     }
-                    results.append("\n");
-                    results.append("🔗 ").append(shortenUrl(link)).append("\n\n");
-
-                    count++;
+                }
+            } else {
+                SearchResultItem item = createSearchResultItem(topic);
+                if (item != null) {
+                    results.add(item);
                 }
             }
-
-            if (count == 0) {
-                return "❌ No search results found for '" + originalQuery + "'. Try different keywords or check spelling.";
-            }
-
-            results.append("💡 Found ").append(count).append(" results");
-            return results.toString();
-
-        } catch (Exception e) {
-            log.error("Failed to parse HTML results: {}", e.getMessage());
-            return "Search completed but results couldn't be parsed properly.";
         }
+
+        return results;
     }
 
-    // Helper methods
-    private String extractSiteName(String url, org.jsoup.nodes.Element urlElement) {
+    private SearchResultItem createSearchResultItem(JsonNode resultNode) {
+        String text = resultNode.path("Text").asText();
+        String url = resultNode.path("FirstURL").asText();
+
+        if (text.isEmpty() || url.isEmpty()) {
+            return null;
+        }
+
+        String title = extractTitleFromText(text);
+        String description = extractDescriptionFromText(text, title);
+
+        return new SearchResultItem(title, description, url);
+    }
+
+    private String formatSearchResult(SearchResult result) {
+        StringBuilder output = new StringBuilder();
+        output.append("🔍 **Web Search Results for: \"").append(result.getQuery()).append("\"**\n\n");
+
+        // Add instant answer if available
+        if (result.hasInstantAnswer()) {
+            InstantAnswer answer = result.getInstantAnswer();
+            output.append("🎯 **Instant Answer**");
+            if (!answer.getSource().isEmpty()) {
+                output.append(" (from ").append(answer.getSource()).append(")");
+            }
+            output.append(":\n");
+            output.append(answer.getText()).append("\n");
+            if (!answer.getUrl().isEmpty()) {
+                output.append("🔗 ").append(shortenUrl(answer.getUrl())).append("\n");
+            }
+            output.append("\n");
+        }
+
+        // Add search results
+        SearchResultList searchResults = result.getSearchResults();
+        if (!searchResults.isEmpty()) {
+            output.append("📚 **Related Results:**\n\n");
+
+            for (int i = 0; i < searchResults.size(); i++) {
+                SearchResultItem item = searchResults.get(i);
+                output.append("**").append(i + 1).append(". ").append(item.getTitle()).append("**\n");
+
+                if (!item.getDescription().isEmpty()) {
+                    output.append("📝 ").append(truncateSnippet(item.getDescription(), MAX_SNIPPET_LENGTH)).append("\n");
+                }
+
+                output.append("🔗 ").append(shortenUrl(item.getUrl())).append("\n\n");
+            }
+        }
+
+        // Add footer
+        if (!result.hasInstantAnswer() && searchResults.isEmpty()) {
+            output.append("❌ No results found for '").append(result.getQuery()).append("'.\n");
+            output.append("💡 Try using different keywords or more specific terms.");
+        } else {
+            output.append("---\n");
+            output.append("💡 Found ").append(searchResults.size()).append(" result(s)");
+            if (result.hasInstantAnswer()) {
+                output.append(" + instant answer");
+            }
+            output.append(" • Powered by DuckDuckGo");
+        }
+
+        return output.toString();
+    }
+
+    private String extractTitleFromText(String text) {
+        int separatorIndex = text.indexOf(" - ");
+        if (separatorIndex > 0) {
+            String title = text.substring(0, separatorIndex);
+            return title.length() > MAX_TITLE_LENGTH ? title.substring(0, MAX_TITLE_LENGTH) + "..." : title;
+        }
+        return text.length() > MAX_TITLE_LENGTH ? text.substring(0, MAX_TITLE_LENGTH) + "..." : text;
+    }
+
+    private String extractDescriptionFromText(String text, String title) {
+        if (text.startsWith(title) && text.length() > title.length() + 3) {
+            return text.substring(title.length() + 3); // Remove " - "
+        }
+        return text.equals(title) ? "" : text;
+    }
+
+    private static String shortenUrl(String url) {
+        if (url == null || url.length() <= URL_DISPLAY_MAX_LENGTH) {
+            return url;
+        }
+
         try {
-            if (urlElement != null && !urlElement.text().isEmpty()) {
-                return urlElement.text(); // DuckDuckGo sometimes provides clean site names
-            }
-
-            // Extract domain from URL
-            java.net.URL parsedUrl = new java.net.URL(url);
+            URL parsedUrl = new URL(url);
             String host = parsedUrl.getHost();
-            return host.startsWith("www.") ? host.substring(4) : host;
-        } catch (Exception e) {
-            return "Unknown source";
-        }
-    }
+            String path = parsedUrl.getPath();
 
-    private String shortenUrl(String url) {
-        if (url.length() > 60) {
-            try {
-                java.net.URL parsedUrl = new java.net.URL(url);
-                return parsedUrl.getHost() + "..." + url.substring(url.length() - 20);
-            } catch (Exception e) {
-                return url.substring(0, 60) + "...";
+            if (path.length() > URL_PATH_MAX_LENGTH) {
+                path = path.substring(0, URL_TRUNCATE_THRESHOLD) + "...";
             }
+
+            String shortened = host + path;
+            return shortened.length() > URL_DISPLAY_MAX_LENGTH ?
+                    shortened.substring(0, URL_DISPLAY_MAX_LENGTH - 3) + "..." : shortened;
+
+        } catch (MalformedURLException e) {
+            return url.length() > URL_DISPLAY_MAX_LENGTH ?
+                    url.substring(0, URL_DISPLAY_MAX_LENGTH - 3) + "..." : url;
         }
-        return url;
     }
 
-    private String truncateSnippet(String text, int maxLength) {
-        if (text.length() <= maxLength) return text;
+    private static String truncateSnippet(String text, int maxLength) {
+        if (text == null || text.length() <= maxLength) {
+            return text;
+        }
 
-        // Try to break at a word boundary
         int lastSpace = text.lastIndexOf(' ', maxLength);
         if (lastSpace > maxLength - 20) {
             return text.substring(0, lastSpace) + "...";
         }
-
         return text.substring(0, maxLength) + "...";
     }
 
+    // Helper classes
+    private static class SearchRequest {
+        private final boolean valid;
+        private final String errorMessage;
+        private final String query;
+
+        private SearchRequest(boolean valid, String errorMessage, String query) {
+            this.valid = valid;
+            this.errorMessage = errorMessage;
+            this.query = query;
+        }
+
+        static SearchRequest valid(String query) {
+            return new SearchRequest(true, null, query);
+        }
+
+        static SearchRequest invalid(String errorMessage) {
+            return new SearchRequest(false, errorMessage, null);
+        }
+
+        boolean isValid() {
+            return valid;
+        }
+
+        String getErrorMessage() {
+            return errorMessage;
+        }
+
+        String getQuery() {
+            return query;
+        }
+    }
+
+    private static class InstantAnswer {
+        private final String text;
+        private final String url;
+        private final String source;
+
+        InstantAnswer(String text, String url, String source) {
+            this.text = text != null ? text : "";
+            this.url = url != null ? url : "";
+            this.source = source != null ? source : "";
+        }
+
+        String getText() {
+            return text;
+        }
+
+        String getUrl() {
+            return url;
+        }
+
+        String getSource() {
+            return source;
+        }
+    }
+
+    private static class SearchResultItem {
+        private final String title;
+        private final String description;
+        private final String url;
+
+        SearchResultItem(String title, String description, String url) {
+            this.title = title != null ? title : "";
+            this.description = description != null ? description : "";
+            this.url = url != null ? url : "";
+        }
+
+        String getTitle() {
+            return title;
+        }
+
+        String getDescription() {
+            return description;
+        }
+
+        String getUrl() {
+            return url;
+        }
+    }
+
+    private static class SearchResultList {
+        private final java.util.List<SearchResultItem> items = new java.util.ArrayList<>();
+
+        void add(SearchResultItem item) {
+            items.add(item);
+        }
+
+        SearchResultItem get(int index) {
+            return items.get(index);
+        }
+
+        int size() {
+            return items.size();
+        }
+
+        boolean isEmpty() {
+            return items.isEmpty();
+        }
+    }
+
+    private static class SearchResult {
+        private final String query;
+        private final InstantAnswer instantAnswer;
+        private final SearchResultList searchResults;
+
+        SearchResult(String query, InstantAnswer instantAnswer, SearchResultList searchResults) {
+            this.query = query;
+            this.instantAnswer = instantAnswer;
+            this.searchResults = searchResults != null ? searchResults : new SearchResultList();
+        }
+
+        String getQuery() {
+            return query;
+        }
+
+        InstantAnswer getInstantAnswer() {
+            return instantAnswer;
+        }
+
+        SearchResultList getSearchResults() {
+            return searchResults;
+        }
+
+        boolean hasInstantAnswer() {
+            return instantAnswer != null;
+        }
+
+        int getResultCount() {
+            return searchResults.size();
+        }
+    }
+
+    // Custom exception
+    private static class WebSearchException extends Exception {
+        WebSearchException(String message) {
+            super(message);
+        }
+    }
 }
+
 
