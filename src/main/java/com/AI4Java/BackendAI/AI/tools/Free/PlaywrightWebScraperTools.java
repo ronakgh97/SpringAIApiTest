@@ -158,7 +158,7 @@ public class PlaywrightWebScraperTools {
         }
     }
 
-    @Tool(name = "scrape_webpage",
+    @Tool(name = "scrape_webpage_playwright",
             description = "Scrapes and extracts content from any webpage URL using a headless browser. " +
                     "Returns clean text content, title, and key metadata information.")
     public String scrape_webpage(@ToolParam(description = "Full http/https URL to scrape") String url) {
@@ -189,7 +189,7 @@ public class PlaywrightWebScraperTools {
         }
     }
 
-    @Tool(name = "extract_structured_data",
+    @Tool(name = "extract_structured_data_playwright",
             description = "Extracts structured data from a webpage like tables, lists, or specific elements. " +
                     "Optionally accepts a CSS selector for targeting specific elements.")
     public String extract_structured_data(
@@ -223,7 +223,7 @@ public class PlaywrightWebScraperTools {
         }
     }
 
-    @Tool(name = "monitor_webpage_changes",
+    @Tool(name = "monitor_webpage_changes_playwright",
             description = "Checks if a webpage has changed by generating a content hash. " +
                     "Useful for monitoring websites for updates or changes.")
     public String monitor_webpage_changes(@ToolParam(description = "Full http/https URL to monitor") String url) {

@@ -178,7 +178,7 @@ public class PlaywrightBrowserSearchTools {
         }
     }
 
-    @Tool(name = "playwright_search",
+    @Tool(name = "browser_search_playwright",
             description = "Fast web search using multiple search engines (DuckDuckGo and Bing) with browser automation and anti-detection features. " +
                     "Supports engine preference and automatic fallback for maximum reliability.")
     public String playwrightSearch(

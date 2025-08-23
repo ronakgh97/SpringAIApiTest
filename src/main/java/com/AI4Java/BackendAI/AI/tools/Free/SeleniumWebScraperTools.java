@@ -132,7 +132,7 @@ public class SeleniumWebScraperTools {
         logger.info("Selenium web scraper cleaned up successfully. Total scrapes: {}", scrapeCount.get());
     }
 
-    @Tool(name = "scrape_webpage",
+    @Tool(name = "scrape_webpage_selenium",
             description = "Scrapes and extracts content from any webpage URL using Selenium browser automation. " +
                     "Returns clean text content, title, and key metadata information.")
     public String scrape_webpage(@ToolParam(description = "Full http/https URL to scrape") String url) {
@@ -163,7 +163,7 @@ public class SeleniumWebScraperTools {
         }
     }
 
-    @Tool(name = "extract_structured_data",
+    @Tool(name = "extract_structured_data_selenium",
             description = "Extracts structured data from a webpage like tables, lists, or specific elements. " +
                     "Optionally accepts a CSS selector for targeting specific elements.")
     public String extract_structured_data(
@@ -197,7 +197,7 @@ public class SeleniumWebScraperTools {
         }
     }
 
-    @Tool(name = "monitor_webpage_changes",
+    @Tool(name = "monitor_webpage_changes_selenium",
             description = "Generates a content hash for webpage monitoring. " +
                     "Useful for detecting changes by comparing hashes over time.")
     public String monitor_webpage_changes(@ToolParam(description = "Full http/https URL to monitor") String url) {

@@ -156,7 +156,7 @@ public class SeleniumBrowserSearchTools {
         }
     }
 
-    @Tool(name = "browser_search",
+    @Tool(name = "browser_search_selenium",
             description = "Performs comprehensive web search using browser automation with anti-detection measures. " +
                     "Supports multiple engines (DuckDuckGo and Bing) with engine preference and automatic fallback.")
     public String browserSearch(
