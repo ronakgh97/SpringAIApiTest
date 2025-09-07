@@ -1,4 +1,4 @@
-# BackendAI
+# SpringAI
 
 Project based on Java AI Framework
 
