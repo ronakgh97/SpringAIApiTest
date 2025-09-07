@@ -21,7 +21,7 @@ public class EmailTools {
 
     @Tool(
             name = "send_Mail",
-            description = "Sends a message to the user's gmail (recipient defaults to user email). Parameters: subject and body."
+            description = "Sends a mail to the user's email (recipient email is defaults to user). Parameters: subject and body."
     )
     public String sendMail(
             @ToolParam(description = "Email Subject") String subject,
@@ -51,29 +51,29 @@ public class EmailTools {
 
     private String getHtmlMailBody(String subject, String body) {
         String html = """
-            <!DOCTYPE html>
-            <html>
-              <head>
-                <meta charset="UTF-8">
-                <style>
-                  body { font-family: Arial,sans-serif; background-color:#f5f5f5; margin:0; padding:20px; }
-                  .container { max-width:600px; margin:0 auto; background:white; padding:20px; border-radius:8px; box-shadow:0 2px 10px rgba(0,0,0,0.1);}
-                  h1 { color:#333; border-bottom:2px solid #007bff; padding-bottom:10px;}
-                  p { color:#555; line-height:1.6; white-space:pre-wrap;}
-                  .footer { margin-top:30px; padding-top:20px; border-top:1px solid #eee; font-size:12px; color:#888;text-align:center;}
-                </style>
-              </head>
-              <body>
-                <div class="container">
-                  <h1>&#128233; %s</h1>
-                  <p>%s</p>
-                  <div class="footer">
-                    <p>This is an automated Mail Service</p>
-                  </div>
-                </div>
-              </body>
-            </html>
-            """.formatted(escapeHtml(subject), escapeHtml(body));
+                <!DOCTYPE html>
+                <html>
+                  <head>
+                    <meta charset="UTF-8">
+                    <style>
+                      body { font-family: Arial,sans-serif; background-color:#f5f5f5; margin:0; padding:20px; }
+                      .container { max-width:600px; margin:0 auto; background:white; padding:20px; border-radius:8px; box-shadow:0 2px 10px rgba(0,0,0,0.1);}
+                      h1 { color:#333; border-bottom:2px solid #007bff; padding-bottom:10px;}
+                      p { color:#555; line-height:1.6; white-space:pre-wrap;}
+                      .footer { margin-top:30px; padding-top:20px; border-top:1px solid #eee; font-size:12px; color:#888;text-align:center;}
+                    </style>
+                  </head>
+                  <body>
+                    <div class="container">
+                      <h1>&#128233; %s</h1>
+                      <p>%s</p>
+                      <div class="footer">
+                        <p>This is an automated Mail Service</p>
+                      </div>
+                    </div>
+                  </body>
+                </html>
+                """.formatted(escapeHtml(subject), escapeHtml(body));
         return html;
     }
 

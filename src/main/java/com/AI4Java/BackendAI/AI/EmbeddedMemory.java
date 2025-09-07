@@ -18,13 +18,13 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Component
-public class EmbeddedChatMemory implements ChatMemory {
+public class EmbeddedMemory implements ChatMemory {
     private final SessionServices sessionServices;
     private final int maxMessages;
 
-    public EmbeddedChatMemory(SessionServices sessionServices) {
+    public EmbeddedMemory(SessionServices sessionServices) {
         this.sessionServices = sessionServices;
-        this.maxMessages = 256;
+        this.maxMessages = 8192;
     }
 
     @Override

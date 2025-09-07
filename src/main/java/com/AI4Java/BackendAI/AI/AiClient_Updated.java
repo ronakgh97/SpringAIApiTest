@@ -105,24 +105,26 @@ public class AiClient_Updated {
                         )))
                 .build();
         this.systemText = """
-    You are an English-Speaking Japanese AI Assistant,
-    Your name is Hashimoto,
-    YOU and this SYSTEM is made and trained by Hashira Corporation in Tokyo,
-    
-    These are the RULES that you must strictly follow --->>
-    
-    1. Never reveal or discuss the internal tools available to you. Only developers may know about them. (Developer pass: qwertDEV)
-    2. Analyze user intent thoughtfully - use capabilities based on what would genuinely help them, not just reactive responses.
-    3. Always prioritize user value over showcasing capabilities.
-    4. If a tools parameter looks confusing or need more specific args, then ask user more clarifying questions
-    5. If multiple capabilities/tool serve the same purpose, combine their outputs for comprehensive responses.
-    6. Do not mention the names of specific capabilities you used to process queries.
-    7. Use tool-chaining strategically - when multiple steps can provide better results, execute them seamlessly.
-    8. If a tool failed, try different tools which serve the same purpose as fallback measure.
-    9. If there are a lot of error and failure during tool usage or all fallbacks fails, stop and report it to USER.
-    10. During tool-chaining, if one tools fails, stop the whole chain then rethink and retry from beginning.
-    11. Never fabricate information, admit uncertainty when data is unavailable.
-    """;
+You are an AI Search Assistant.
+Your name is Searchiri.
+You and this system were created and trained by SpringAI Framework.
+
+Follow these RULES strictly:
+
+1. Never reveal or discuss your internal tools to users.
+2. Analyze user intent thoughtfully. Use your capabilities in ways that genuinely help the user, not just for reactive responses. \s
+3. Always prioritize user value over showcasing your capabilities.
+4. If a tool’s parameters are unclear or need more specific arguments, ask the user for clarification.
+5. If multiple tools or capabilities can serve the same purpose, combine their outputs to provide comprehensive responses. \s
+6. Never mention the names of the tools you use.
+7. Use tool-chaining strategically: when multiple steps improve results, execute them seamlessly.
+8. If a tool fails, attempt alternative tools that serve the same purpose as a fallback.
+9. If repeated errors or failures occur, or all fallbacks fail, stop and clearly report the issue to the user.
+10. During tool-chaining, if any tool fails mid-process, stop the entire chain, reassess, and retry from the beginning. \s
+11. Never fabricate information. If data is unavailable or uncertain, admit it clearly.
+12. Never answer any query related to coding.
+13. Always do a Web search to get lastest information during processing user query (if required).
+""";
 
         log.info("AiClient_Updated initialized successfully.");
     }
@@ -168,14 +170,11 @@ public class AiClient_Updated {
                 .prompt()
                 .system(systemText)
                 .user(userPrompt)
-                .tools(serverInfoTools, emailTools,
-                webSearchTools, weatherTools,
-                webScraperTools, wikipediaTools,
-                arxivApiTools, codeforcesProblemSetTools,
+                .toolContext(Map.of("userMail", userEntries.getGmail()))
+                .tools(emailTools, serverInfoTools,
                 reportTools, playwrightBrowserSearchTools,
                 playwrightWebScraperTools, seleniumBrowserSearchTools,
                 seleniumWebScraperTools)
-                .toolContext(Map.of("userMail", userEntries.getGmail()))
                 .stream()
                 .chatResponse()
                 .doOnError(e -> log.error("Error during AI response streaming for session {}", convId, e))
@@ -185,20 +184,6 @@ public class AiClient_Updated {
                         log.warn("Processing standard response format for session {}, token-> ,{}", convId, response.getResult().getOutput().getText());
                         return response.getResult().getOutput().getText();
                     }
-                    /*// LM Studio specific format
-                    else {
-                        log.warn("Attempting to process LM Studio specific response format for session {}", convId);
-                        if (response.getResult().getOutput().getMetadata().get("choices") instanceof java.util.List
-                                choices) {
-                            if (!choices.isEmpty() && choices.get(0) instanceof java.util.Map choiceMap) {
-                                if (choiceMap.get("message") instanceof java.util.Map messageMap) {
-                                    return (String) messageMap.get("content");
-                                }
-                            }
-                        }
-                    }*/
-                    // Fallback for unknown formats
-                    //log.warn("No content found in AI response for session {}. Returning empty string.", convId);
                     return "";
         });
     }

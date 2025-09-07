@@ -63,7 +63,7 @@ public class CreateUserWithOneSessionMessage {
     }
 
     void sendMessage(String token, String sessionId) throws Exception {
-        String chatRequest = "{\"prompt\":\"Hello Hashimoto!!, Can you mail me the current weather report of Malda?\"}";
+        String chatRequest = "{\"prompt\":\"Hello Hashimoto!!, Can you send me a mail on the current weather report of Malda?\"}";
         mockMvc.perform(post("/api/v1/chat/" + sessionId)
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -71,7 +71,7 @@ public class CreateUserWithOneSessionMessage {
                 .andExpect(status().isOk())
                 .andReturn();
 
-        Thread.sleep(220000); //Slow PC
+        Thread.sleep(250000); //Slow PC
 
     }
 

@@ -1,0 +1,56 @@
+{
+  "ignore_directories": [
+    "node_modules",
+    "target",
+    "build",
+    ".git",
+    "Windows",
+    "System32",
+    "Cache",
+    "Temp",
+    ".cache"
+  ],
+  "ignore_file_patterns": [
+    "*.tmp",
+    "*.log",
+    "*.bak",
+    "*.swp",
+    "thumbs.db",
+    ".DS_Store"
+  ],
+  "max_memory_mb": 2048,
+  "max_files_per_search": 500000,
+  "max_parallel_threads": null,
+  "max_file_size_mb": 10,
+  "include_hidden": false,
+  "follow_symlinks": false,
+  "content_search_extensions": [
+    ".rs",
+    ".py",
+    ".js",
+    ".ts",
+    ".java",
+    ".cpp",
+    ".c",
+    ".h",
+    ".txt",
+    ".md",
+    ".json",
+    ".yaml",
+    ".yml",
+    ".toml",
+    ".cfg"
+  ],
+  "default_search_options": {
+    "match_mode": "exact",
+    "case_sensitive": false
+  },
+  "output_options": {
+    "show_details": true,
+    "color_theme": "default",
+    "max_content_matches": 3,
+    "max_line_length": 100
+  },
+  "enable_simd": true,
+  "show_simd_info": false
+}

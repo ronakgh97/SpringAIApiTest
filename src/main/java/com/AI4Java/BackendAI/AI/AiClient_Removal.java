@@ -16,6 +16,7 @@ import reactor.core.publisher.Flux;
 import java.util.ArrayList;
 import java.util.List;
 
+@Deprecated
 @Service
 public class AiClient_Removal {
 

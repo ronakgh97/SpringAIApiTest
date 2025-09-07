@@ -180,7 +180,7 @@ public class PlaywrightBrowserSearchTools {
 
     @Tool(name = "browser_search_playwright",
             description = "Fast web search using multiple search engines (DuckDuckGo and Bing) with browser automation and anti-detection features. " +
-                    "Supports engine preference and automatic fallback for maximum reliability.")
+                    "Supports engine preference and automatic fallback")
     public String playwrightSearch(
             @ToolParam(description = "Search query") String query,
             @ToolParam(description = "Preferred search engine: 'duckduckgo' or 'bing' (optional)", required = false) String engine) {
