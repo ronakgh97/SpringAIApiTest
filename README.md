@@ -1,6 +1,6 @@
 # SpringAI
 
-Project based on Java AI Framework
+Project based on Java AI Framework  
 
 ## Features
 

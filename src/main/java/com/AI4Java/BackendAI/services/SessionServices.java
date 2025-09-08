@@ -60,6 +60,7 @@ public class SessionServices {
         return sessionRepo.findById(id);
     }
 
+    @Transactional
     public void simpleSave(SessionEntries sessionEntries){
         log.info("Saving session");
         sessionRepo.save(sessionEntries);
