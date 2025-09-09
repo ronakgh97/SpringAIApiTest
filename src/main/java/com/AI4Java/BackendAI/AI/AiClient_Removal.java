@@ -17,7 +17,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Deprecated
-@Service
 public class AiClient_Removal {
 
     private final OpenAiChatModel chatModel;

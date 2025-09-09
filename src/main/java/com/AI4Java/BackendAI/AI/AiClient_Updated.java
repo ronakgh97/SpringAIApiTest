@@ -27,6 +27,8 @@ import java.net.http.HttpClient;
 import java.time.Duration;
 import java.util.Map;
 
+import org.springframework.beans.factory.annotation.Qualifier;
+
 @Service
 public class AiClient_Updated {
 
@@ -81,7 +83,7 @@ public class AiClient_Updated {
     private final OpenAiApi openAiApi;
     private final String systemText;
 
-    public AiClient_Updated(ChatMemory chatMemory,
+    public AiClient_Updated(@Qualifier("embeddedMemory") ChatMemory chatMemory,
                             @Value("${spring.ai.openai.api-key}") String apiKey,
                             @Value("${spring.ai.openai.base-url}") String baseUrl) {
         this.chatMemory = chatMemory;

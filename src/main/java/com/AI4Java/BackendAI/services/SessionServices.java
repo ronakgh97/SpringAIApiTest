@@ -70,7 +70,7 @@ public class SessionServices {
     public SessionEntries checkIfExists(ObjectId sessionId){
         log.info("Checking if session exists with id: {}", sessionId);
         return sessionRepo.findById(sessionId)
-                .orElseThrow(() -> new RuntimeException("Session not found with ID: "));
+                .orElseThrow(() -> new RuntimeException("Session not found with ID: "+ sessionId));
     }
 
     @Transactional
