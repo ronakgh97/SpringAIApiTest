@@ -3,7 +3,7 @@ package com.AI4Java.BackendAI.ToolTests;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-import com.AI4Java.BackendAI.AI.tools.Free.PlaywrightBrowserSearchTools;
+import com.AI4Java.BackendAI.AI.tools.WebSearch.PlaywrightBrowserSearchTools;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

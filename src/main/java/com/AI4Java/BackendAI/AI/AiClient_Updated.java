@@ -1,7 +1,13 @@
 package com.AI4Java.BackendAI.AI;
 
+import com.AI4Java.BackendAI.AI.tools.Emails.EmailTools;
+import com.AI4Java.BackendAI.AI.tools.Emails.ReportTools;
+import com.AI4Java.BackendAI.AI.tools.Emails.ServerInfoTools;
 import com.AI4Java.BackendAI.AI.tools.Free.*;
-import com.AI4Java.BackendAI.AI.tools.Free.WebSearchTools;
+import com.AI4Java.BackendAI.AI.tools.WebSearch.PlaywrightBrowserSearchTools;
+import com.AI4Java.BackendAI.AI.tools.WebSearch.PlaywrightWebScraperTools;
+import com.AI4Java.BackendAI.AI.tools.WebSearch.SeleniumBrowserSearchTools;
+import com.AI4Java.BackendAI.AI.tools.WebSearch.SeleniumWebScraperTools;
 import com.AI4Java.BackendAI.entries.SessionEntries;
 import com.AI4Java.BackendAI.entries.UserEntries;
 import com.AI4Java.BackendAI.services.SessionServices;
@@ -47,22 +53,7 @@ public class AiClient_Updated {
         private EmailTools emailTools;
 
         @Autowired
-        private WebSearchTools webSearchTools;
-
-        @Autowired
-        private WeatherTools weatherTools;
-
-        @Autowired
-        private WebScraperTools webScraperTools;
-
-        @Autowired
-        private WikipediaTools wikipediaTools;
-
-        @Autowired
-        private ArxivApiTools arxivApiTools;
-
-        @Autowired
-        private CodeforcesProblemSetTools codeforcesProblemSetTools;
+        private ReportTools reportTools;
 
         @Autowired
         private PlaywrightBrowserSearchTools playwrightBrowserSearchTools;
@@ -76,8 +67,6 @@ public class AiClient_Updated {
         @Autowired
         private SeleniumWebScraperTools seleniumWebScraperTools;
 
-        @Autowired
-        private ReportTools reportTools;
 
     private final ChatMemory chatMemory;
     private final OpenAiApi openAiApi;
@@ -126,6 +115,7 @@ Follow these RULES strictly:
 11. Never fabricate information. If data is unavailable or uncertain, admit it clearly.
 12. Never answer any query related to coding.
 13. Always do a Web search to get lastest information during processing user query (if required).
+14. If information is insufficient even after browser search, then scrape whatever links you get for more information
 """;
 
         log.info("AiClient_Updated initialized successfully.");

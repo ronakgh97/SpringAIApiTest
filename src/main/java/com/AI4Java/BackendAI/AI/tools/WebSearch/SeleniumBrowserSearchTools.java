@@ -1,6 +1,5 @@
-package com.AI4Java.BackendAI.AI.tools.Free;
+package com.AI4Java.BackendAI.AI.tools.WebSearch;
 
-import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
@@ -15,6 +14,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
+import org.springframework.context.ApplicationListener;
+import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.stereotype.Service;
 
 import java.net.MalformedURLException;
@@ -23,11 +24,12 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 
 @Service
-public class SeleniumBrowserSearchTools {
+public class SeleniumBrowserSearchTools implements ApplicationListener<ContextRefreshedEvent> {
 
     private static final Logger logger = LoggerFactory.getLogger(SeleniumBrowserSearchTools.class);
 
@@ -113,7 +115,14 @@ public class SeleniumBrowserSearchTools {
             "--disable-translate",
             "--disable-background-timer-throttling",
             "--disable-renderer-backgrounding",
-            "--disable-backgrounding-occluded-windows"
+            "--disable-backgrounding-occluded-windows",
+            "--disable-default-apps",
+            "--disable-dev-shm-usage",
+            "--disable-extensions-file-access-check",
+            "--disable-extensions-http-throttling",
+            "--disable-extensions-http-throttling",
+            "--memory-pressure-off",
+            "--max_old_space_size=4096"
     );
 
     private static final List<String> EXCLUDE_SWITCHES = List.of("enable-automation");
@@ -126,20 +135,23 @@ public class SeleniumBrowserSearchTools {
                     "window.chrome = {runtime: {}, loadTimes: () => ({}), csi: () => ({})};";
 
     // Instance variables
-    private WebDriver driver;
+    private volatile WebDriver driver;
     private final SecureRandom random = new SecureRandom();
     private final AtomicLong searchCount = new AtomicLong(0);
 
-    @PostConstruct
-    public void initializeDriver() {
-        logger.info("Initializing Selenium browser search tool with {} search engines", SEARCH_ENGINES.size());
+    @Override
+    public void onApplicationEvent(ContextRefreshedEvent event) {
+        CompletableFuture.runAsync(this::initializeDriverAsync);
+    }
+
+    public void initializeDriverAsync() {
+        logger.info("Initializing Selenium browser search tool asynchronously...");
         try {
             setupChromeDriver();
             logger.info("Selenium browser search tool initialized successfully. Available engines: {}",
                     String.join(", ", SEARCH_ENGINES.keySet()));
         } catch (Exception e) {
-            logger.error("Failed to initialize Selenium browser search tool", e);
-            throw new SeleniumInitializationException("Failed to initialize Selenium driver", e);
+            logger.error("Asynchronous Selenium browser initialization failed.", e);
         }
     }
 
@@ -162,6 +174,11 @@ public class SeleniumBrowserSearchTools {
     public String browserSearch(
             @ToolParam(description = "Search query") String query,
             @ToolParam(description = "Preferred search engine: 'duckduckgo' or 'bing' (optional)", required = false) String engine) {
+
+        if (driver == null) {
+            logger.warn("Selenium driver is not yet initialized. Please try again in a moment.");
+            return "⏳ The browser is warming up. Please try again in a few moments.";
+        }
 
         long searchId = searchCount.incrementAndGet();
         logger.debug("Starting browser search #{} for query: '{}' with engine preference: '{}'",
@@ -225,7 +242,7 @@ public class SeleniumBrowserSearchTools {
                 SearchEngineResult result = performSearchWithEngine(request.getQuery(), config, searchId);
 
                 if (result.hasResults()) {
-                    allResults.append(result.getFormattedResults()).append("\n");
+                    allResults.append(result.getFormattedResults()).append(" ");
                     logger.info("Search #{} successful with {} engine - {} results",
                             searchId, config.name, result.getResultCount());
 
@@ -506,17 +523,17 @@ public class SeleniumBrowserSearchTools {
 
             StringBuilder result = new StringBuilder();
             result.append(config.emoji).append(" **").append(engineName).append(" Results for: ")
-                    .append(query).append("**\n\n");
+                    .append(query).append("** ");
 
             for (int i = 0; i < items.size(); i++) {
                 SearchResultItem item = items.get(i);
-                result.append("**").append(i + 1).append(". ").append(item.title).append("**\n");
+                result.append("**").append(i + 1).append(". ").append(item.title).append("** ");
 
                 if (!item.snippet.isEmpty()) {
-                    result.append("📝 ").append(truncateText(item.snippet, config.snippetLength)).append("\n");
+                    result.append("📝 ").append(truncateText(item.snippet, config.snippetLength)).append(" ");
                 }
 
-                result.append("🔗 ").append(shortenUrl(item.link)).append("\n\n");
+                result.append("🔗 ").append(shortenUrl(item.link)).append(" ");
             }
 
             return result.toString();

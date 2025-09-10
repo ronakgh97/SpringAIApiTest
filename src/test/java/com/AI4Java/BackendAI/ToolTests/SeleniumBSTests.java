@@ -1,6 +1,6 @@
 package com.AI4Java.BackendAI.ToolTests;
 
-import com.AI4Java.BackendAI.AI.tools.Free.SeleniumBrowserSearchTools;
+import com.AI4Java.BackendAI.AI.tools.WebSearch.SeleniumBrowserSearchTools;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

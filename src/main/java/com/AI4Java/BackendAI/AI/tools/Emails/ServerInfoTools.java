@@ -1,4 +1,4 @@
-package com.AI4Java.BackendAI.AI.tools.Free;
+package com.AI4Java.BackendAI.AI.tools.Emails;
 
 
 import org.slf4j.Logger;

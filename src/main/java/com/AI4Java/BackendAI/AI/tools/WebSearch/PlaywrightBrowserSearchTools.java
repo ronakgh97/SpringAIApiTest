@@ -1,25 +1,27 @@
-package com.AI4Java.BackendAI.AI.tools.Free;
+package com.AI4Java.BackendAI.AI.tools.WebSearch;
 
 import com.microsoft.playwright.*;
 import com.microsoft.playwright.options.WaitForSelectorState;
 import com.microsoft.playwright.options.WaitUntilState;
-import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
+import org.springframework.context.ApplicationListener;
+import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.stereotype.Service;
 
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
+import java.util.concurrent.CompletableFuture;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 
 @Service
-public class PlaywrightBrowserSearchTools {
+public class PlaywrightBrowserSearchTools implements ApplicationListener<ContextRefreshedEvent> {
 
     private static final Logger logger = LoggerFactory.getLogger(PlaywrightBrowserSearchTools.class);
 
@@ -124,7 +126,10 @@ public class PlaywrightBrowserSearchTools {
             "--no-first-run",
             "--disable-default-apps",
             "--disable-infobars",
-            "--window-size=" + VIEWPORT_WIDTH + "," + VIEWPORT_HEIGHT
+            "--window-size=" + VIEWPORT_WIDTH + "," + VIEWPORT_HEIGHT,
+            "--memory-pressure-off",
+            "--max_old_space_size=4096",
+            "--disable-background-networking"
     );
 
     // Resource blocking patterns
@@ -147,23 +152,30 @@ public class PlaywrightBrowserSearchTools {
             "}";
 
     // Instance variables
-    private Playwright playwright;
-    private Browser browser;
+    private volatile Playwright playwright;
+    private volatile Browser browser;
     private final SecureRandom random = new SecureRandom();
     private final AtomicLong searchCount = new AtomicLong(0);
 
-    @PostConstruct
-    public void initialize() {
-        logger.info("Initializing Playwright browser search tool with {} search engines and {} user agents",
-                SEARCH_ENGINES.size(), USER_AGENTS.size());
-        playwright = Playwright.create();
-        browser = playwright.chromium().launch(new BrowserType.LaunchOptions()
-                .setHeadless(BROWSER_HEADLESS)
-                .setTimeout(BROWSER_LAUNCH_TIMEOUT_MS)
-                .setArgs(BROWSER_ARGS)
-        );
-        logger.info("Playwright browser initialized successfully. Available engines: {}",
-                String.join(", ", SEARCH_ENGINES.keySet()));
+    @Override
+    public void onApplicationEvent(ContextRefreshedEvent event) {
+        CompletableFuture.runAsync(this::initializeBrowserAsync);
+    }
+
+    public void initializeBrowserAsync() {
+        logger.info("Initializing Playwright browser search tool asynchronously...");
+        try {
+            playwright = Playwright.create();
+            browser = playwright.chromium().launch(new BrowserType.LaunchOptions()
+                    .setHeadless(BROWSER_HEADLESS)
+                    .setTimeout(BROWSER_LAUNCH_TIMEOUT_MS)
+                    .setArgs(BROWSER_ARGS)
+            );
+            logger.info("Playwright browser initialized successfully. Available engines: {}",
+                    String.join(", ", SEARCH_ENGINES.keySet()));
+        } catch (Exception e) {
+            logger.error("Asynchronous Playwright browser initialization failed.", e);
+        }
     }
 
     @PreDestroy
@@ -184,6 +196,11 @@ public class PlaywrightBrowserSearchTools {
     public String playwrightSearch(
             @ToolParam(description = "Search query") String query,
             @ToolParam(description = "Preferred search engine: 'duckduckgo' or 'bing' (optional)", required = false) String engine) {
+
+        if (browser == null) {
+            logger.warn("Playwright browser is not yet initialized. Please try again in a moment.");
+            return "⏳ The browser is warming up. Please try again in a few moments.";
+        }
 
         long searchId = searchCount.incrementAndGet();
         logger.debug("Starting browser search #{} for query: '{}' with engine preference: '{}'",
@@ -260,7 +277,7 @@ public class PlaywrightBrowserSearchTools {
                 SearchEngineResult result = performSearchWithEngine(page, request.getQuery(), config, searchId);
 
                 if (result.hasResults()) {
-                    allResults.append(result.getFormattedResults()).append("\n");
+                    allResults.append(result.getFormattedResults()).append(" ");
                     logger.info("Search #{} successful with {} engine - {} results",
                             searchId, config.name, result.getResultCount());
 
@@ -558,17 +575,17 @@ public class PlaywrightBrowserSearchTools {
 
             StringBuilder result = new StringBuilder();
             result.append(config.emoji).append(" **").append(engineName).append(" Results for: ")
-                    .append(query).append("**\n\n");
+                    .append(query).append("** ");
 
             for (int i = 0; i < items.size(); i++) {
                 SearchResultData item = items.get(i);
-                result.append("**").append(i + 1).append(". ").append(item.title).append("**\n");
+                result.append("**").append(i + 1).append(". ").append(item.title).append("** ");
 
                 if (!item.snippet.isEmpty()) {
-                    result.append("📝 ").append(truncateText(item.snippet, config.snippetLength)).append("\n");
+                    result.append("📝 ").append(truncateText(item.snippet, config.snippetLength)).append(" ");
                 }
 
-                result.append("🔗 ").append(shortenUrl(item.link)).append("\n\n");
+                result.append("🔗 ").append(shortenUrl(item.link)).append(" ");
             }
 
             return result.toString();

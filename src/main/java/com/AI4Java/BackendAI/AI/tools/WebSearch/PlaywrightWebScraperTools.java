@@ -1,82 +1,70 @@
-package com.AI4Java.BackendAI.AI.tools.Free;
+package com.AI4Java.BackendAI.AI.tools.WebSearch;
 
+import com.microsoft.playwright.*;
+import com.microsoft.playwright.options.LoadState;
+import com.microsoft.playwright.options.WaitUntilState;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
-import org.openqa.selenium.*;
-import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.chrome.ChromeOptions;
-import org.openqa.selenium.support.ui.WebDriverWait;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
+import org.springframework.context.ApplicationListener;
+import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.stereotype.Service;
+
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicLong;
 
 @Service
-public class SeleniumWebScraperTools {
+public class PlaywrightWebScraperTools implements ApplicationListener<ContextRefreshedEvent> {
 
-    private static final Logger logger = LoggerFactory.getLogger(SeleniumWebScraperTools.class);
+    private static final Logger logger = LoggerFactory.getLogger(PlaywrightWebScraperTools.class);
 
     // Browser Configuration
     private static final int VIEWPORT_WIDTH = 1920;
     private static final int VIEWPORT_HEIGHT = 1080;
-    private static final boolean HEADLESS_MODE = true;
+    private static final boolean BROWSER_HEADLESS = true;
 
     // Timeout Configuration
-    private static final Duration PAGE_LOAD_TIMEOUT = Duration.ofSeconds(30);
-    private static final Duration IMPLICIT_WAIT_TIMEOUT = Duration.ofSeconds(10);
-    private static final Duration EXPLICIT_WAIT_TIMEOUT = Duration.ofSeconds(15);
-    private static final int DYNAMIC_CONTENT_WAIT_MS = 2000;
+    private static final int DEFAULT_TIMEOUT_MS = 30000;
+    private static final int NAVIGATION_TIMEOUT_MS = 30000;
+    private static final int NETWORK_IDLE_TIMEOUT_MS = 15000;
+    private static final int ADDITIONAL_WAIT_MS = 2000;
+    private static final int RETRY_DELAY_BASE_MS = 2000;
 
     // Content Configuration
-    private static final int MAX_CONTENT_LENGTH = 2000;
-    private static final int MAX_STRUCTURED_ELEMENTS = 20;
-    private static final int ELEMENT_TEXT_PREVIEW_LENGTH = 200;
-    private static final int CONTENT_TRUNCATE_THRESHOLD = 1800;
-    private static final int MAX_TABLE_PREVIEW_ROWS = 3;
-    private static final int MAX_HEADING_PREVIEW = 5;
+    private static final int MAX_CONTENT_LENGTH = 1500;
+    private static final int MAX_STRUCTURED_ELEMENTS = 10;
+    private static final int CONTENT_TRUNCATE_THRESHOLD = 1200;
+    private static final int MAX_RETRY_ATTEMPTS = 3;
 
     // CSS Selectors
-    private static final String[] CONTENT_SELECTORS = {
-            "main", "article", ".content", ".post", ".entry",
-            ".main-content", "#main", "#content", ".post-content",
-            ".entry-content", ".article-content"
-    };
-
-    private static final String REMOVE_ELEMENTS_SELECTOR =
-            "script, style, nav, header, footer, aside, .advertisement, .ads";
-
-    private static final String META_DESCRIPTION_SELECTOR =
-            "meta[name=description], meta[property='og:description']";
-
-    private static final String AUTHOR_SELECTOR =
-            "meta[name=author], .author, .byline, meta[property='article:author']";
-
-    private static final String DATE_SELECTOR =
-            "time, .date, .published, meta[property='article:published_time']";
+    private static final String MAIN_CONTENT_SELECTORS = "main, article, .content, .post, .entry";
+    private static final String REMOVE_ELEMENTS_SELECTORS = "script, style, nav, header, footer, aside";
+    private static final String META_DESCRIPTION_SELECTOR = "meta[name=description]";
+    private static final String AUTHOR_SELECTORS = "meta[name=author], .author, .byline";
+    private static final String DATE_SELECTORS = "time, .date, .published, meta[property='article:published_time']";
 
     // Structured data selectors
     private static final String TABLE_SELECTOR = "table";
     private static final String LIST_SELECTOR = "ul, ol";
     private static final String LINK_SELECTOR = "a[href]";
     private static final String IMAGE_SELECTOR = "img[src]";
-    private static final String HEADING_SELECTOR = "h1, h2, h3, h4, h5, h6";
 
-    // User Agents Pool
+    // User agents pool
     private static final List<String> USER_AGENTS = List.of(
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
             "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36",
@@ -84,55 +72,101 @@ public class SeleniumWebScraperTools {
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
             "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0",
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:109.0) Gecko/20100101 Firefox/115.0"
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:109.0) Gecko/20100101 Firefox/115.0",
+            "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/115.0"
     );
 
-    // Chrome Options
-    private static final List<String> CHROME_ARGS = List.of(
+    // HTTP Headers
+    private static final Map<String, String> DEFAULT_HEADERS = Map.of(
+            "Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+            "Accept-Language", "en-US,en;q=0.9",
+            "Accept-Encoding", "gzip, deflate, br",
+            "Cache-Control", "no-cache",
+            "Pragma", "no-cache"
+    );
+
+    // Browser launch arguments
+    private static final List<String> BROWSER_ARGS = List.of(
             "--disable-gpu",
-            "--window-size=" + VIEWPORT_WIDTH + "," + VIEWPORT_HEIGHT,
-            "--blink-settings=imagesEnabled=false",
-            "--disable-dev-shm-usage",
-            "--no-sandbox",
-            "--disable-extensions",
-            "--disable-logging",
-            "--disable-notifications",
-            "--disable-popup-blocking",
-            "--disable-translate",
+            "--disable-images",
+            "--disable-web-security",
             "--disable-features=VizDisplayCompositor",
+            "--no-sandbox",
+            "--disable-dev-shm-usage",
             "--disable-blink-features=AutomationControlled"
     );
 
-    private static final List<String> EXCLUDE_SWITCHES = List.of("enable-automation");
-
-    // Stealth Scripts
-    private static final String[] STEALTH_SCRIPTS = {
-            "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})",
-            "Object.defineProperty(navigator, 'plugins', {get: () => Array.from({length: 5}, () => ({}))})",
-            "Object.defineProperty(navigator, 'languages', {get: () => ['en-US', 'en']})",
-            "window.chrome = {runtime: {}, loadTimes: () => ({}), csi: () => ({})}"
-    };
+    // Stealth script
+    private static final String STEALTH_SCRIPT = """
+        () => {
+            // Remove webdriver property
+            Object.defineProperty(navigator, 'webdriver', {
+                get: () => undefined,
+            });
+            
+            // Mock chrome object  
+            window.chrome = {
+                runtime: {},
+                loadTimes: () => ({}),
+                csi: () => ({})
+            };
+            
+            // Mock plugins
+            Object.defineProperty(navigator, 'plugins', {
+                get: () => Array.from({length: 5}, () => ({}))
+            });
+            
+            // Mock languages
+            Object.defineProperty(navigator, 'languages', {
+                get: () => ['en-US', 'en']
+            });
+            
+            // Hide automation indicators
+            Object.defineProperty(navigator, 'permissions', {
+                get: () => ({
+                    query: () => Promise.resolve({ state: 'granted' })
+                })
+            });
+        }
+        """;
 
     // Instance variables
+    private volatile Playwright playwright;
+    private volatile Browser browser;
     private final SecureRandom random = new SecureRandom();
     private final AtomicLong scrapeCount = new AtomicLong(0);
 
-    @PostConstruct
+    @Override
+    public void onApplicationEvent(ContextRefreshedEvent event) {
+        CompletableFuture.runAsync(this::initialize);
+    }
+
     public void initialize() {
-        logger.info("Initializing Selenium web scraper tool");
-        // Initialization logic if needed (e.g., driver pool setup)
-        logger.info("Selenium web scraper tool initialized successfully");
+        logger.info("Initializing Playwright web scraper tool asynchronously...");
+        try {
+            playwright = Playwright.create();
+            browser = createBrowser();
+            logger.info("Playwright web scraper initialized successfully");
+        } catch (Exception e) {
+            logger.error("Failed to initialize Playwright web scraper", e);
+            throw new ScraperInitializationException("Failed to initialize web scraper", e);
+        }
     }
 
     @PreDestroy
     public void cleanup() {
-        logger.info("Shutting down Selenium web scraper tool");
-        // Cleanup logic if needed
-        logger.info("Selenium web scraper cleaned up successfully. Total scrapes: {}", scrapeCount.get());
+        logger.info("Shutting down Playwright web scraper tool");
+        try {
+            if (browser != null) browser.close();
+            if (playwright != null) playwright.close();
+            logger.info("Playwright web scraper cleaned up successfully. Total scrapes: {}", scrapeCount.get());
+        } catch (Exception e) {
+            logger.error("Error during web scraper cleanup", e);
+        }
     }
 
-    @Tool(name = "scrape_webpage_selenium",
-            description = "Scrapes and extracts content from any webpage URL using Selenium browser automation. " +
+    @Tool(name = "scrape_webpage_playwright",
+            description = "Scrapes and extracts content from any webpage URL using a headless browser. " +
                     "Returns clean text content, title, and key metadata information.")
     public String scrape_webpage(@ToolParam(description = "Full http/https URL to scrape") String url) {
         long scrapeId = scrapeCount.incrementAndGet();
@@ -146,11 +180,11 @@ public class SeleniumWebScraperTools {
         }
 
         try {
-            String html = fetchPageContent(validation.getCleanUrl(), scrapeId);
-            String result = parseWebpageContent(html, validation.getCleanUrl());
+            String html = fetchPageContent(url, scrapeId);
+            String result = parseWebpageContent(html, url);
 
             logger.info("Webpage scrape #{} completed successfully for domain: {}",
-                    scrapeId, extractDomain(validation.getCleanUrl()));
+                    scrapeId, extractDomain(url));
             return result;
 
         } catch (ScrapingException e) {
@@ -162,7 +196,7 @@ public class SeleniumWebScraperTools {
         }
     }
 
-    @Tool(name = "extract_structured_data_selenium",
+    @Tool(name = "extract_structured_data_playwright",
             description = "Extracts structured data from a webpage like tables, lists, or specific elements. " +
                     "Optionally accepts a CSS selector for targeting specific elements.")
     public String extract_structured_data(
@@ -181,8 +215,8 @@ public class SeleniumWebScraperTools {
         }
 
         try {
-            String html = fetchPageContent(validation.getCleanUrl(), scrapeId);
-            String result = extractStructuredData(html, selector, validation.getCleanUrl());
+            String html = fetchPageContent(url, scrapeId);
+            String result = extractStructuredData(html, selector, url);
 
             logger.info("Structured data extraction #{} completed successfully", scrapeId);
             return result;
@@ -196,9 +230,9 @@ public class SeleniumWebScraperTools {
         }
     }
 
-    @Tool(name = "monitor_webpage_changes_selenium",
-            description = "Generates a content hash for webpage monitoring. " +
-                    "Useful for detecting changes by comparing hashes over time.")
+    @Tool(name = "monitor_webpage_changes_playwright",
+            description = "Checks if a webpage has changed by generating a content hash. " +
+                    "Useful for monitoring websites for updates or changes.")
     public String monitor_webpage_changes(@ToolParam(description = "Full http/https URL to monitor") String url) {
         long scrapeId = scrapeCount.incrementAndGet();
         logger.debug("Starting webpage monitoring #{} for URL: {}", scrapeId, url);
@@ -211,11 +245,11 @@ public class SeleniumWebScraperTools {
         }
 
         try {
-            String content = scrape_webpage(validation.getCleanUrl());
+            String content = scrape_webpage(url);
             String contentHash = generateContentHash(content);
             String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
 
-            logger.info("Webpage monitoring #{} completed for domain: {}", scrapeId, extractDomain(validation.getCleanUrl()));
+            logger.info("Webpage monitoring #{} completed for domain: {}", scrapeId, extractDomain(url));
 
             return String.format("""
                 📊 **Webpage Monitoring Report**
@@ -225,10 +259,8 @@ public class SeleniumWebScraperTools {
                 🔍 **Content Hash:** %s
                 📅 **Timestamp:** %s
                 
-                💡 **Usage:** Store this hash to compare against future checks for change detection.
-                📋 **Tip:** Run this tool periodically and compare hashes to detect content changes.
-                """, validation.getCleanUrl(), extractDomain(validation.getCleanUrl()),
-                    contentHash.substring(0, 16), timestamp);
+                💡 **Note:** Store this hash to compare against future checks for change detection.
+                """, url, extractDomain(url), contentHash.substring(0, 16), timestamp);
 
         } catch (Exception e) {
             logger.error("Webpage monitoring #{} failed: {}", scrapeId, e.getMessage());
@@ -236,113 +268,88 @@ public class SeleniumWebScraperTools {
         }
     }
 
-    private String fetchPageContent(String url, long scrapeId) throws ScrapingException {
-        WebDriver driver = null;
+    private Browser createBrowser() throws ScraperInitializationException {
         try {
-            ChromeOptions options = createChromeOptions();
-            driver = new ChromeDriver(options);
+            BrowserType.LaunchOptions launchOptions = new BrowserType.LaunchOptions()
+                    .setHeadless(BROWSER_HEADLESS)
+                    .setArgs(BROWSER_ARGS);
 
-            configureTimeouts(driver);
-
-            logger.debug("Navigating to URL for scrape #{}: {}", scrapeId, url);
-            driver.get(url);
-
-            // Optional cookie addition (non-critical)
-            addSessionCookie(driver, scrapeId);
-
-            // Apply stealth techniques
-            applyStealthTechniques(driver, scrapeId);
-
-            // Wait for page to be fully loaded
-            waitForPageLoad(driver, scrapeId);
-
-            // Additional wait for dynamic content
-            Thread.sleep(DYNAMIC_CONTENT_WAIT_MS);
-
-            String pageSource = driver.getPageSource();
-            logger.debug("Successfully fetched page source for scrape #{}, length: {}", scrapeId, pageSource.length());
-
-            return pageSource;
-
-        } catch (TimeoutException e) {
-            throw new ScrapingException("Page load timeout: " + e.getMessage());
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new ScrapingException("Scraping interrupted: " + e.getMessage());
+            return playwright.chromium().launch(launchOptions);
         } catch (Exception e) {
-            throw new ScrapingException("Failed to fetch page content: " + e.getMessage());
+            throw new ScraperInitializationException("Failed to create browser", e);
+        }
+    }
+
+    private String fetchPageContent(String url, long scrapeId) throws ScrapingException {
+        BrowserContext context = null;
+        try {
+            String userAgent = getRandomUserAgent();
+
+            context = browser.newContext(new Browser.NewContextOptions()
+                    .setUserAgent(userAgent)
+                    .setViewportSize(VIEWPORT_WIDTH, VIEWPORT_HEIGHT)
+                    .setJavaScriptEnabled(true)
+                    .setExtraHTTPHeaders(DEFAULT_HEADERS)
+            );
+
+            Page page = context.newPage();
+            configurePageStealth(page);
+            setPageTimeouts(page);
+
+            return fetchWithRetry(page, url, scrapeId);
+
+        } catch (Exception e) {
+            throw new ScrapingException("Failed to fetch page content: " + e.getMessage(), e);
         } finally {
-            if (driver != null) {
+            if (context != null) {
                 try {
-                    driver.quit();
+                    context.close();
                 } catch (Exception e) {
-                    logger.warn("Error closing driver for scrape #{}: {}", scrapeId, e.getMessage());
+                    logger.warn("Error closing browser context for scrape #{}", scrapeId, e);
                 }
             }
         }
     }
 
-    private ChromeOptions createChromeOptions() {
-        ChromeOptions options = new ChromeOptions();
+    private String fetchWithRetry(Page page, String url, long scrapeId) throws ScrapingException {
+        for (int attempt = 1; attempt <= MAX_RETRY_ATTEMPTS; attempt++) {
+            try {
+                logger.debug("Attempt {} of {} for scrape #{}", attempt, MAX_RETRY_ATTEMPTS, scrapeId);
 
-        // Add headless mode
-        if (HEADLESS_MODE) {
-            options.addArguments("--headless=new");
-        }
+                Response response = page.navigate(url, new Page.NavigateOptions()
+                        .setWaitUntil(WaitUntilState.DOMCONTENTLOADED)
+                        .setTimeout(NAVIGATION_TIMEOUT_MS));
 
-        // Add all arguments
-        for (String arg : CHROME_ARGS) {
-            options.addArguments(arg);
-        }
+                if (response == null || !response.ok()) {
+                    throw new ScrapingException("Failed to load page: " +
+                            (response != null ? "HTTP " + response.status() : "No response"));
+                }
 
-        // Add random user agent
-        String userAgent = getRandomUserAgent();
-        options.addArguments("--user-agent=" + userAgent);
+                // Wait for network to be idle
+                page.waitForLoadState(LoadState.NETWORKIDLE,
+                        new Page.WaitForLoadStateOptions().setTimeout(NETWORK_IDLE_TIMEOUT_MS));
 
-        // Experimental options
-        options.setExperimentalOption("useAutomationExtension", false);
-        options.setExperimentalOption("excludeSwitches", EXCLUDE_SWITCHES);
+                // Additional wait for dynamic content
+                page.waitForTimeout(ADDITIONAL_WAIT_MS);
 
-        return options;
-    }
+                return page.content();
 
-    private void configureTimeouts(WebDriver driver) {
-        driver.manage().timeouts().pageLoadTimeout(PAGE_LOAD_TIMEOUT);
-        driver.manage().timeouts().implicitlyWait(IMPLICIT_WAIT_TIMEOUT);
-    }
+            } catch (Exception e) {
+                if (attempt == MAX_RETRY_ATTEMPTS) {
+                    throw new ScrapingException("Failed after " + MAX_RETRY_ATTEMPTS + " attempts: " + e.getMessage(), e);
+                }
 
-    private void addSessionCookie(WebDriver driver, long scrapeId) {
-        try {
-            Cookie sessionCookie = new Cookie("session-id", "scraper-session-" + System.currentTimeMillis());
-            driver.manage().addCookie(sessionCookie);
-            logger.debug("Session cookie added for scrape #{}", scrapeId);
-        } catch (Exception e) {
-            logger.debug("Could not add session cookie for scrape #{} (normal): {}", scrapeId, e.getMessage());
-        }
-    }
-
-    private void applyStealthTechniques(WebDriver driver, long scrapeId) {
-        try {
-            JavascriptExecutor js = (JavascriptExecutor) driver;
-            for (String script : STEALTH_SCRIPTS) {
-                js.executeScript(script);
+                logger.warn("Attempt {} failed for scrape #{}, retrying: {}", attempt, scrapeId, e.getMessage());
+                try {
+                    Thread.sleep(RETRY_DELAY_BASE_MS * attempt);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new ScrapingException("Scraping interrupted", ie);
+                }
             }
-            logger.debug("Stealth techniques applied for scrape #{}", scrapeId);
-        } catch (Exception e) {
-            logger.debug("Could not apply stealth techniques for scrape #{}: {}", scrapeId, e.getMessage());
         }
-    }
 
-    private void waitForPageLoad(WebDriver driver, long scrapeId) {
-        try {
-            WebDriverWait wait = new WebDriverWait(driver, EXPLICIT_WAIT_TIMEOUT);
-            wait.until(webDriver -> ((JavascriptExecutor) webDriver)
-                    .executeScript("return document.readyState").equals("complete"));
-            logger.debug("Page fully loaded for scrape #{}", scrapeId);
-        } catch (TimeoutException e) {
-            logger.warn("Page load wait timeout for scrape #{}: {}", scrapeId, e.getMessage());
-            // Continue anyway - partial content may still be useful
-        }
+        throw new ScrapingException("Unexpected end of retry loop");
     }
 
     private UrlValidationResult validateUrl(String url) {
@@ -373,6 +380,15 @@ public class SeleniumWebScraperTools {
         return USER_AGENTS.get(random.nextInt(USER_AGENTS.size()));
     }
 
+    private void configurePageStealth(Page page) {
+        page.addInitScript(STEALTH_SCRIPT);
+    }
+
+    private void setPageTimeouts(Page page) {
+        page.setDefaultTimeout(DEFAULT_TIMEOUT_MS);
+        page.setDefaultNavigationTimeout(NAVIGATION_TIMEOUT_MS);
+    }
+
     private String parseWebpageContent(String html, String url) throws ScrapingException {
         try {
             Document doc = Jsoup.parse(html);
@@ -383,7 +399,7 @@ public class SeleniumWebScraperTools {
             return formatWebpageResult(metadata, mainContent);
 
         } catch (Exception e) {
-            throw new ScrapingException("Failed to parse webpage content: " + e.getMessage());
+            throw new ScrapingException("Failed to parse webpage content: " + e.getMessage(), e);
         }
     }
 
@@ -399,26 +415,23 @@ public class SeleniumWebScraperTools {
 
     private String extractMainContent(Document doc) {
         // Remove unwanted elements
-        doc.select(REMOVE_ELEMENTS_SELECTOR).remove();
+        doc.select(REMOVE_ELEMENTS_SELECTORS).remove();
 
         // Try to find main content area
-        for (String selector : CONTENT_SELECTORS) {
-            Element mainContent = doc.selectFirst(selector);
-            if (mainContent != null && !mainContent.text().trim().isEmpty()) {
-                return mainContent.text();
-            }
+        Element mainContent = doc.selectFirst(MAIN_CONTENT_SELECTORS);
+        if (mainContent != null) {
+            return mainContent.text();
         }
 
         // Fallback to body content
-        Element body = doc.body();
-        return body != null ? body.text() : "No content found";
+        return doc.body().text();
     }
 
     private String formatWebpageResult(WebpageMetadata metadata, String content) {
         StringBuilder result = new StringBuilder();
         result.append("📄 **Webpage Content Extracted**\n\n");
         result.append("🌐 **Source:** ").append(metadata.domain).append("\n");
-        result.append("📝 **Title:** ").append(metadata.title.isEmpty() ? "No title found" : metadata.title).append("\n");
+        result.append("📝 **Title:** ").append(metadata.title).append("\n");
 
         if (!metadata.description.isEmpty()) {
             result.append("📋 **Description:** ").append(metadata.description).append("\n");
@@ -447,7 +460,7 @@ public class SeleniumWebScraperTools {
             }
 
         } catch (Exception e) {
-            throw new ScrapingException("Failed to extract structured data: " + e.getMessage());
+            throw new ScrapingException("Failed to extract structured data: " + e.getMessage(), e);
         }
     }
 
@@ -465,17 +478,12 @@ public class SeleniumWebScraperTools {
 
         int count = 0;
         for (Element element : elements) {
-            if (count >= MAX_STRUCTURED_ELEMENTS) {
-                result.append("... and ").append(elements.size() - count).append(" more elements\n");
-                break;
-            }
+            if (count >= MAX_STRUCTURED_ELEMENTS) break;
 
-            String elementText = element.text().trim();
-            if (!elementText.isEmpty()) {
+            String text = element.text();
+            if (!text.isEmpty()) {
                 result.append(String.format("**%d.** %s\n", count + 1,
-                        elementText.length() > ELEMENT_TEXT_PREVIEW_LENGTH ?
-                                elementText.substring(0, ELEMENT_TEXT_PREVIEW_LENGTH) + "..." :
-                                elementText));
+                        text.length() > 100 ? text.substring(0, 100) + "..." : text));
                 count++;
             }
         }
@@ -487,66 +495,25 @@ public class SeleniumWebScraperTools {
         StringBuilder result = new StringBuilder();
         result.append(String.format("📊 **Structured Data from %s**\n\n", extractDomain(url)));
 
-        // Extract and analyze tables
-        Elements tables = doc.select(TABLE_SELECTOR);
-        if (!tables.isEmpty()) {
-            result.append(String.format("📋 **Tables:** %d found\n", tables.size()));
-            appendTablePreview(result, tables);
-        }
+        // Count different types of structured elements
+        int tables = doc.select(TABLE_SELECTOR).size();
+        int lists = doc.select(LIST_SELECTOR).size();
+        int links = doc.select(LINK_SELECTOR).size();
+        int images = doc.select(IMAGE_SELECTOR).size();
 
-        // Extract lists
-        Elements lists = doc.select(LIST_SELECTOR);
-        if (!lists.isEmpty()) {
-            result.append(String.format("📝 **Lists:** %d found\n", lists.size()));
-        }
+        if (tables > 0) result.append(String.format("📋 **Tables:** %d found\n", tables));
+        if (lists > 0) result.append(String.format("📝 **Lists:** %d found\n", lists));
+        if (links > 0) result.append(String.format("🔗 **Links:** %d found\n", links));
+        if (images > 0) result.append(String.format("🖼️ **Images:** %d found\n", images));
 
-        // Extract links
-        Elements links = doc.select(LINK_SELECTOR);
-        if (!links.isEmpty()) {
-            result.append(String.format("🔗 **Links:** %d found\n", links.size()));
-        }
-
-        // Extract images
-        Elements images = doc.select(IMAGE_SELECTOR);
-        if (!images.isEmpty()) {
-            result.append(String.format("🖼️ **Images:** %d found\n", images.size()));
-        }
-
-        // Extract headings with preview
-        Elements headings = doc.select(HEADING_SELECTOR);
-        if (!headings.isEmpty()) {
-            result.append(String.format("📑 **Headings:** %d found\n", headings.size()));
-            appendHeadingPreview(result, headings);
+        if (tables == 0 && lists == 0 && links == 0 && images == 0) {
+            result.append("ℹ️ No common structured data elements found.\n");
         }
 
         return result.toString();
     }
 
-    private void appendTablePreview(StringBuilder result, Elements tables) {
-        if (!tables.isEmpty()) {
-            Element firstTable = tables.first();
-            Elements rows = firstTable.select("tr");
-            if (!rows.isEmpty()) {
-                result.append("   First table preview:\n");
-                for (int i = 0; i < Math.min(MAX_TABLE_PREVIEW_ROWS, rows.size()); i++) {
-                    String rowText = rows.get(i).text();
-                    result.append("   ").append(rowText.length() > 100 ? rowText.substring(0, 100) + "..." : rowText).append("\n");
-                }
-            }
-        }
-    }
-
-    private void appendHeadingPreview(StringBuilder result, Elements headings) {
-        result.append("   Preview:\n");
-        for (int i = 0; i < Math.min(MAX_HEADING_PREVIEW, headings.size()); i++) {
-            Element heading = headings.get(i);
-            result.append("   ").append(heading.tagName().toUpperCase())
-                    .append(": ").append(heading.text()).append("\n");
-        }
-    }
-
-    // Utility methods
-    private static String extractDomain(String url) {
+    private String extractDomain(String url) {
         try {
             return new URL(url).getHost();
         } catch (Exception e) {
@@ -554,36 +521,22 @@ public class SeleniumWebScraperTools {
         }
     }
 
-    private static String extractMetaDescription(Document doc) {
+    private String extractMetaDescription(Document doc) {
         Element desc = doc.selectFirst(META_DESCRIPTION_SELECTOR);
         return desc != null ? desc.attr("content") : "";
     }
 
-    private static String extractAuthor(Document doc) {
-        Element author = doc.selectFirst(AUTHOR_SELECTOR);
-        if (author != null) {
-            if (author.hasAttr("content")) return author.attr("content");
-            if (author.hasText()) return author.text();
-        }
-        return "";
+    private String extractAuthor(Document doc) {
+        Element author = doc.selectFirst(AUTHOR_SELECTORS);
+        return author != null ? author.text() : "";
     }
 
-    private static String extractPublishDate(Document doc) {
-        Element date = doc.selectFirst(DATE_SELECTOR);
-        if (date != null) {
-            if (date.hasAttr("datetime")) return date.attr("datetime");
-            if (date.hasAttr("content")) return date.attr("content");
-            if (date.hasText()) return date.text();
-        }
-        return "";
+    private String extractPublishDate(Document doc) {
+        Element date = doc.selectFirst(DATE_SELECTORS);
+        return date != null ? (date.hasAttr("datetime") ? date.attr("datetime") : date.text()) : "";
     }
 
-    private static String truncateContent(String content, int maxLength) {
-        if (content == null || content.trim().isEmpty()) {
-            return "No content found";
-        }
-
-        content = content.trim();
+    private String truncateContent(String content, int maxLength) {
         if (content.length() <= maxLength) {
             return content;
         }
@@ -595,13 +548,14 @@ public class SeleniumWebScraperTools {
         return content.substring(0, maxLength) + "...\n\n📄 [Content truncated - full text extracted]";
     }
 
-    private static String generateContentHash(String content) {
+    private String generateContentHash(String content) {
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-256");
             byte[] hash = md.digest(content.getBytes(StandardCharsets.UTF_8));
             return Base64.getEncoder().encodeToString(hash);
         } catch (Exception e) {
-            return "hash-error-" + System.currentTimeMillis();
+            logger.warn("Failed to generate content hash", e);
+            return "hash-generation-failed";
         }
     }
 
@@ -646,13 +600,22 @@ public class SeleniumWebScraperTools {
         }
     }
 
-    // Custom exception
+    // Custom exceptions
+    private static class ScraperInitializationException extends RuntimeException {
+        ScraperInitializationException(String message, Throwable cause) {
+            super(message, cause);
+        }
+    }
+
     private static class ScrapingException extends Exception {
         ScrapingException(String message) {
             super(message);
         }
+
+        ScrapingException(String message, Throwable cause) {
+            super(message, cause);
+        }
     }
 }
-
 
 
