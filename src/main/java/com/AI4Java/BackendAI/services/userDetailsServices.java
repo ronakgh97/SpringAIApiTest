@@ -13,7 +13,6 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 
-@Component
 @Service
 public class userDetailsServices implements UserDetailsService {
 
@@ -24,7 +23,7 @@ public class userDetailsServices implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        logger.debug("Looking for user with username: {}",username);
+        logger.debug("Looking for user with username: {}", username);
 
         UserEntries user;
         try {

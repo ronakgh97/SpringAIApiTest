@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 public class ServerInfoTools {
     private static final Logger log = LoggerFactory.getLogger(ServerInfoTools.class);
 
-    @Tool(name = "get_CurrentDateTime(SERVER)", description = "Get the current date and time in the server's timezone")
+    @Tool(name = "get_CurrentDateTime_SERVER", description = "Get the current date and time in the server's timezone")
     String getCurrentDateTime() {
         log.info("Using get_CurrentDateTimeSERVER");
         return LocalDateTime.now().atZone(LocaleContextHolder.getTimeZone().toZoneId()).toString();

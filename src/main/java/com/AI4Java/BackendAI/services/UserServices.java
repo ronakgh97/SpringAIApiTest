@@ -9,12 +9,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
 
-@Component
+@Service
 public class UserServices {
 
     private static final Logger log = LoggerFactory.getLogger(UserServices.class);
@@ -26,7 +27,7 @@ public class UserServices {
     private PasswordEncoder passwordEncoder;
 
     @Transactional
-    public UserEntries saveNewEntry(UserEntries entry){
+    public UserEntries saveNewEntry(UserEntries entry) {
         log.info("Creating new user: {}", entry.getUserName());
         entry.setPassword(passwordEncoder.encode(entry.getPassword()));
         entry.setRoles(List.of("USER"));
@@ -67,33 +68,33 @@ public class UserServices {
     }
 
     @Transactional
-    public void saveUser(UserEntries entry){
+    public void saveUser(UserEntries entry) {
         log.info("Saving user: {}", entry.getUserName());
         userRepo.save(entry);
         log.info("User saved successfully: {}", entry.getUserName());
     }
 
-    public List<UserEntries> getAllEntry(){
+    public List<UserEntries> getAllEntry() {
         log.info("Retrieving all users");
         return userRepo.findAll();
     }
 
-    public UserEntries findByUserName(String UserName){
+    public UserEntries findByUserName(String UserName) {
         log.info("Finding user by username: {}", UserName);
         return userRepo.findByUserName(UserName);
     }
 
-    public UserEntries findByMail(String gmail){
+    public UserEntries findByMail(String gmail) {
         log.info("Finding user by gmail: {}", gmail);
         return userRepo.findByGmail(gmail);
     }
 
-    public Optional<UserEntries> findById(ObjectId id){
+    public Optional<UserEntries> findById(ObjectId id) {
         log.info("Finding user by id: {}", id);
         return userRepo.findById(id);
     }
 
-    public void deleteById(ObjectId id){
+    public void deleteById(ObjectId id) {
         log.info("Deleting user by id: {}", id);
         userRepo.deleteById(id);
         log.info("User deleted successfully with id: {}", id);

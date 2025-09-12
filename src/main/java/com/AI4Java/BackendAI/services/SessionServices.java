@@ -8,13 +8,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
-@Component
+@Service
 public class SessionServices {
 
     private static final Logger log = LoggerFactory.getLogger(SessionServices.class);
@@ -26,7 +27,7 @@ public class SessionServices {
     private UserServices userServices;
 
     @Transactional
-    public void saveEntry(SessionEntries entry, String username){
+    public void saveEntry(SessionEntries entry, String username) {
         log.info("Saving session for user: {}", username);
         UserEntries user = userServices.findByUserName(username);
         entry.setDateTime(LocalDateTime.now());
@@ -36,18 +37,18 @@ public class SessionServices {
         log.info("Session saved successfully for user: {}", username);
     }
 
-    public List<SessionEntries> getAllEntry( ){
+    public List<SessionEntries> getAllEntry() {
         log.info("Retrieving all sessions");
         return sessionRepo.findAll();
     }
 
     @Transactional
-    public boolean deleteById(ObjectId id, String username){
+    public boolean deleteById(ObjectId id, String username) {
         log.info("Deleting session with id: {} for user: {}", id, username);
-        boolean removed=false;
+        boolean removed = false;
         UserEntries user = userServices.findByUserName(username);
-        removed = user.getSessionEntries().removeIf(x->x.getSessionId().equals(id));
-        if(removed){
+        removed = user.getSessionEntries().removeIf(x -> x.getSessionId().equals(id));
+        if (removed) {
             userServices.saveUser(user);
             sessionRepo.deleteById(id);
             log.info("Session deleted successfully with id: {}", id);
@@ -55,26 +56,26 @@ public class SessionServices {
         return removed;
     }
 
-    public Optional<SessionEntries> getById(ObjectId id){
+    public Optional<SessionEntries> getById(ObjectId id) {
         log.info("Retrieving session by id: {}", id);
         return sessionRepo.findById(id);
     }
 
     @Transactional
-    public void simpleSave(SessionEntries sessionEntries){
+    public void simpleSave(SessionEntries sessionEntries) {
         log.info("Saving session");
         sessionRepo.save(sessionEntries);
         log.info("Session saved successfully");
     }
 
-    public SessionEntries checkIfExists(ObjectId sessionId){
+    public SessionEntries checkIfExists(ObjectId sessionId) {
         log.info("Checking if session exists with id: {}", sessionId);
         return sessionRepo.findById(sessionId)
-                .orElseThrow(() -> new RuntimeException("Session not found with ID: "+ sessionId));
+                .orElseThrow(() -> new RuntimeException("Session not found with ID: " + sessionId));
     }
 
     @Transactional
-    public void updateSession(SessionEntries entry, String username){
+    public void updateSession(SessionEntries entry, String username) {
         log.info("Updating session for user: {}", username);
         UserEntries user = userServices.findByUserName(username);
         entry.setDateTime(LocalDateTime.now());

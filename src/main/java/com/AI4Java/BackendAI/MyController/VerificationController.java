@@ -26,9 +26,10 @@ public class VerificationController {
     @Autowired
     private UserServices userServices;
 
-    @GetMapping("/send")
+    @GetMapping("")
     public ResponseEntity<ApiResponse<String>> sendVerificationCode() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        log.info("Authentication object in sendVerificationCode: {}", authentication);
         String username = authentication.getName();
         UserEntries userEntries = userServices.findByUserName(username);
         try {
@@ -44,9 +45,10 @@ public class VerificationController {
         }
     }
 
-    @PostMapping("/check/{code}")
+    @PostMapping("/{code}")
     public ResponseEntity<ApiResponse<String>> verifyCode(@PathVariable String code) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        log.info("Authentication object in verifyCode: {}", authentication);
         String username = authentication.getName();
         UserEntries userEntries = userServices.findByUserName(username);
         try {

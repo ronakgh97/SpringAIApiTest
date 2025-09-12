@@ -10,14 +10,13 @@ import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Deprecated
-public class AiClient_Removal {
+public class AiClient {
 
     private final OpenAiChatModel chatModel;
     private final SessionRepo sessionRepo;
@@ -25,7 +24,7 @@ public class AiClient_Removal {
     private final ChatMemory chatMemory; // Custom embedded memory
 
     @Autowired
-    public AiClient_Removal(OpenAiChatModel chatModel, SessionRepo sessionRepo, SessionServices sessionServices, ChatMemory chatMemory) {
+    public AiClient(OpenAiChatModel chatModel, SessionRepo sessionRepo, SessionServices sessionServices, ChatMemory chatMemory) {
         this.chatModel = chatModel;
         this.sessionRepo = sessionRepo;
         this.sessionServices = sessionServices;

@@ -28,9 +28,6 @@ public class UserEntries {
     @DBRef
     private List<SessionEntries> sessionEntries = new ArrayList<>();
 
-    @DBRef
-    private List<DropBoxSessionEntries> dropBoxSessionEntries = new ArrayList<>();
-
     private List<String> roles;
 
     private boolean isVerified = false;
@@ -42,13 +39,12 @@ public class UserEntries {
     public UserEntries() {
     }
 
-    public UserEntries(ObjectId userId, String userName, String password, String gmail, List<SessionEntries> sessionEntries, List<DropBoxSessionEntries> ragSessionEntries, List<String> roles, boolean isVerify, String verificationCode, LocalDateTime verificationCodeExpires) {
+    public UserEntries(ObjectId userId, String userName, String password, String gmail, List<SessionEntries> sessionEntries, List<String> roles, boolean isVerify, String verificationCode, LocalDateTime verificationCodeExpires) {
         this.userId = userId;
         this.userName = userName;
         this.password = password;
         this.gmail = gmail;
         this.sessionEntries=sessionEntries;
-        this.dropBoxSessionEntries =ragSessionEntries;
         this.roles=roles;
         this.isVerified =isVerify;
         this.verificationCode = verificationCode;
@@ -93,14 +89,6 @@ public class UserEntries {
 
     public void setSessionEntries(List<SessionEntries> sessionEntries) {
         this.sessionEntries = sessionEntries;
-    }
-
-    public List<DropBoxSessionEntries> getDropBoxSessionEntries() {
-        return dropBoxSessionEntries;
-    }
-
-    public void setDropBoxSessionEntries(List<DropBoxSessionEntries> dropBoxSessionEntries) {
-        this.dropBoxSessionEntries = dropBoxSessionEntries;
     }
 
     public List<String> getRoles() {

@@ -11,6 +11,8 @@ import org.springframework.stereotype.Service;
 import jakarta.mail.internet.MimeMessage;
 import org.springframework.mail.javamail.MimeMessageHelper;
 
+import java.util.Objects;
+
 @Service
 public class EmailTools {
 
@@ -28,6 +30,11 @@ public class EmailTools {
             @ToolParam(description = "Email Body") String body,
             ToolContext toolContext) {
         try {
+
+            String userVerified = toolContext.getContext().get("userVerify").toString();
+
+            if(!Objects.equals(userVerified, "true")) return "User's Mail is not verified yet!!";
+
             String recipientMail = toolContext.getContext().get("userMail").toString();
             logger.info("Sending email to: {}", recipientMail);
 

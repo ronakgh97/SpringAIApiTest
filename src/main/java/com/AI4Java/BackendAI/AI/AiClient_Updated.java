@@ -163,6 +163,7 @@ Follow these RULES strictly:
                 .system(systemText)
                 .user(userPrompt)
                 .toolContext(Map.of("userMail", userEntries.getGmail()))
+                .toolContext(Map.of("userVerify", userEntries.isVerified()))
                 .tools(emailTools, serverInfoTools,
                 reportTools, playwrightBrowserSearchTools,
                 playwrightWebScraperTools, seleniumBrowserSearchTools,
